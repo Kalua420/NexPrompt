@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(cuid())
+  name          String
+  email         String         @unique
+  passwordHash  String
+  avatar        String?
+  createdAt     DateTime       @default(now())
+  conversations Conversation[]
+  prompts       Prompt[]
+  favorites     Favorite[]
+  subscription  Subscription?
+  payments      Payment[]
+}
+
+model Conversation {
+  id        String   @id @default(cuid())
+  title     String   @default("New Conversation")
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prompts   Prompt[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Prompt {
+  id             String       @id @default(cuid())
+  title          String       @db.Text
+  content        String       @db.Text
+  useCase        String
+  provider       String
+  tokensUsed     Int?
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversationId String?
+  conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  createdAt      DateTime     @default(now())
+  favorites      Favorite[]
+  generations    Generation[]
+}
+
+model Generation {
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  tokensUsed Int?
+  promptId  String
+  prompt    Prompt   @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model Template {
+  id          String   @id @default(cuid())
+  title       String   @db.Text
+  description String   @db.Text
+  category    String
+  content     String   @db.Text
+  plan        String   @default("free")
+  featured    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model Favorite {
+  id        String @id @default(cuid())
+  userId    String
+  promptId  String
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prompt    Prompt @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  @@unique([userId, promptId])
+}
+
+model Subscription {
+  id             String    @id @default(cuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan           String    // free, pro, enterprise
+  status         String    // active, canceled, expired
+  razorpayPlanId String?
+  subscriptionId String?   @unique
+  currentPeriodEnd DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model Payment {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount          Int
+  currency        String    @default("INR")
+  plan            String
+  status          String    // pending, completed, failed, refunded
+  razorpayOrderId String    @unique
+  razorpayPaymentId String? @unique
+  signature       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
