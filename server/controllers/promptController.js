@@ -64,15 +64,14 @@ export async function getPrompt(req, res) {
 }
 
 export async function createPrompt(req, res) {
-  const { title, content, useCase, provider, conversationId } = req.body;
+  const { title, content, useCase, conversationId } = req.body;
   if (!title || !content) return res.status(400).json({ error: 'Title and content required' });
   if (typeof title !== 'string' || title.length > 500) return res.status(400).json({ error: 'Title must be under 500 characters' });
   if (typeof content !== 'string' || content.length > 50000) return res.status(400).json({ error: 'Content must be under 50000 characters' });
   if (useCase && !validateUseCase(useCase)) return res.status(400).json({ error: 'Invalid use case. Must be one of: ' + USE_CASES.join(', ') });
-  if (!validateProvider(provider)) return res.status(400).json({ error: 'Invalid provider. Must be one of: ' + PROVIDERS.join(', ') });
 
   const prompt = await prisma.prompt.create({
-    data: { title, content, useCase, provider, userId: req.user.userId, conversationId: conversationId || undefined },
+    data: { title, content, useCase, userId: req.user.userId, conversationId: conversationId || undefined },
   });
 
   if (conversationId) {

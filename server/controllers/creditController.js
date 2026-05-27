@@ -2,8 +2,6 @@ import { prisma } from '../src/index.js';
 import {
   getCreditBalance,
   getCreditTransactions,
-  getAllCreditPacks,
-  getCreditPack,
   processCreditPurchase,
 } from '../services/creditService.js';
 import { createOrder, verifyPaymentSignature } from '../services/razorpayService.js';
@@ -166,7 +164,6 @@ export async function verifyCreditPayment(req, res) {
         data: {
           status: 'completed',
           razorpayPaymentId,
-          signature: razorpaySignature,
         },
       });
       

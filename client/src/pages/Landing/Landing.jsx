@@ -1,958 +1,690 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import {
-  ArrowRight, Sparkles, Zap, MessageSquare, Code, PenTool,
-  Image, Search, Check, Star, Users, Cpu, Shield, ArrowUpRight,
-  ChevronDown, Play, X, Video
-} from 'lucide-react';
 
-/* ─── Design Tokens ──────────────────────────────────────────── */
-const TOKEN = {
-  forge: '#FF4D1C',       // brand orange-red
-  forgeGlow: '#FF4D1C33',
-  ink: '#0A0A0F',
-  paper: '#F5F2ED',
-  mist: '#C8C4BE',
-  smoke: '#1A1A24',
-  ember: '#FF6B3D',
-  gold: '#FFB800',
+/* ─── Design tokens ───────────────────────────────────────────── */
+const C = {
+  forge:    '#FF4D1C',
+  forgeGlow:'rgba(255,77,28,0.3)',
+  ink:      '#0A0A0F',
+  bg:       '#131318',
+  surface:  '#1f1f25',
+  surfaceLow:'#1b1b20',
+  onSurface:'#e4e1e9',
+  onSurfaceVariant:'#e5beb4',
+  gold:     '#FFB800',
+  emerald:  '#00C896',
+  blue:     '#4f6ef7',
+  mist:     '#C8C4BE',
 };
 
-/* ─── Data ───────────────────────────────────────────────────── */
-const USE_CASES = [
-  { id:'chatbot',  label:'Chatbot',  Icon:MessageSquare, accent:'#00C896' },
-  { id:'coding',   label:'Coding',   Icon:Code,          accent:'#3B9EFF' },
-  { id:'writing',  label:'Writing',  Icon:PenTool,       accent:'#A855F7' },
-  { id:'research', label:'Research', Icon:Search,        accent:'#FFB800' },
-  { id:'image',    label:'Image',    Icon:Image,         accent:'#FF4D1C' },
-  { id:'video',    label:'Video',    Icon:Video,         accent:'#EC4899' },
-];
-
-const DEMO = {
-  chatbot: `You are a warm, knowledgeable customer support agent for a SaaS platform.
-
-PERSONA: Patient · Professional · Solution-first
-TONE: Empathetic acknowledgment → Clear steps → Confirm resolution
-
-BOUNDARIES
-• Never speculate — escalate to human on complex issues
-• No pricing commitments without manager approval
-
-CAPABILITIES
-→ Account & billing management
-→ Technical troubleshooting (step-by-step)
-→ Feature walkthroughs
-→ Escalation routing`,
-
-  coding: `Build a Node.js/Express REST endpoint for user registration.
-
-INPUT  { name: string, email: string, password: string }
-OUTPUT { user: { id, name, email }, token: JWT }
-
-VALIDATION
-• email → RFC 5322 regex
-• password → ≥8 chars, 1 uppercase, 1 number
-• name → 1–100 chars, no special chars
-
-EDGE CASES
-• 409 on duplicate email (index violation catch)
-• 400 on missing/malformed fields
-• SQL injection prevention via parameterised queries
-• Rate-limit: max 5 attempts / 15 min per IP
-
-TESTING → Unit: validation logic · Integration: DB write + token verify`,
-
-  writing: `Write a landing page hero section for a productivity SaaS.
-
-AUDIENCE  Mid-level managers, 50–200 person companies, time-poor
-TONE  Confident · Benefit-first · Conversational (not corporate)
-PAIN  Too many tools, context-switching, missed deadlines
-
-STRUCTURE
-① Headline (≤10 words) — lead with the outcome
-② Subheadline (≤20 words) — expand the benefit, hint at mechanism
-③ 3 bullet differentiators — each starts with a strong verb
-④ CTA button copy — action-oriented, low friction
-
-CONSTRAINTS
-→ Active voice only · No jargon · No "revolutionary" or "game-changing"
-→ Address the pain directly: "Tired of..." / "Stop juggling..."`,
-
-  research: `Analyze AI coding assistant adoption in enterprise software teams.
-
-QUESTION  What drives adoption vs abandonment of AI coding tools in teams of 20+ devs?
-
-SCOPE  2023–2026 · North America & Western Europe · GitHub Copilot, Cursor, Codeium
-
-FRAMEWORK  Technology Acceptance Model (TAM) + Diffusion of Innovations
-
-STRUCTURE
-1. Executive summary — 3 key trends
-2. Adoption drivers — productivity delta, learning curve, code quality metrics
-3. Barriers — security posture, cost-per-seat, accuracy issues
-4. Cross-segmentation — team size × tech stack × industry vertical
-5. Recommendations — tool selection criteria + phased rollout playbook
-
-CITATION  APA 7 · Prioritise peer-reviewed + industry surveys (Stack Overflow, JetBrains)`,
-
-  image: `Vast brutalist library interior at golden hour, towering concrete shelves receding to infinity, warm amber shafts of light cutting through industrial skylights, lone figure dwarfed by architecture, holographic card catalogues floating mid-air, dust motes suspended in beams, ultra-detailed photorealism, cinematic anamorphic lens, shallow depth of field, Kodak Vision3 film emulation, warm amber + cold steel colour contrast, 8K, award-winning architectural photography`,
-
-  video: `## Video Concept
-60-second explainer showing how AI prompt engineering transforms vague ideas into production-ready outputs — viewers must feel "I need this tool."
-
-## Format & Platform
-Short-form explainer · YouTube Shorts / TikTok / Instagram Reels · 9:16 vertical
-
-## Visual Style
-Screen recording with animated overlays · Clean UI focus · Fast-paced cuts (3–4s per scene) · Vibrant gradient accents (orange-to-purple) · Modern sans-serif text overlays
-
-## Target Audience
-Developers, content creators, marketers using AI daily — frustrated with inconsistent results, want professional-grade prompts without trial-and-error
-
-## Structure & Script Outline
-0–5s: Hook — "Your AI is only as good as your prompt" (bold text + visual of bad AI output)
-5–15s: Problem — Show messy prompt → poor result (side-by-side comparison)
-15–40s: Solution — Demo NexPrompt: paste idea → pick strategy → stream optimized prompt
-40–55s: Result — Show same input now producing perfect output
-55–60s: CTA — "Start free at nexprompt.site" (logo + URL overlay)
-
-## Tone & Presenter Style
-No presenter · Voiceover: confident, fast-paced, direct · Upbeat electronic background music
-
-## Key Messages
-1. Bad prompts = wasted time & money
-2. NexPrompt = instant professional prompts
-3. Works with all major AI providers
-
-## Visual & Audio Elements
-B-roll: typing animations, AI provider logos, before/after comparisons · Music: upbeat tech (120 BPM) · Text: bold sans-serif, high contrast
-
-## Call to Action
-"Try free — no card required" button overlay at 55s
-
-## Production Notes
-1080×1920 (9:16) · Captions required · Brand orange (#FF4D1C) for CTAs`,
-};
-
-const STEPS = [
-  { n:'01', title:'Describe your goal', body:'Write what you want in plain language — no prompting expertise required.', Icon:MessageSquare },
-  { n:'02', title:'Choose a strategy', body:'Five domain-tuned strategies for Chatbot, Coding, Writing, Research, and Image.', Icon:Zap },
-  { n:'03', title:'Pick your AI', body:'Groq, SambaNova, Anthropic, Gemini, or OpenCode — switch anytime, mid-session.', Icon:Cpu },
-  { n:'04', title:'Stream the result', body:'Watch a superior AI response appear in real time. Cancel, refine, repeat.', Icon:Sparkles },
-];
-
-const PROVIDERS = [
-  { name:'Groq',      model:'LLaMA 3.3 70B',        tag:'Fastest',   color:'#00C896' },
-  { name:'SambaNova', model:'DeepSeek-V3.1',        tag:'Powerful',  color:'#3B9EFF' },
-  { name:'Anthropic', model:'Claude 3.5 Sonnet',     tag:'Nuanced',   color:'#A855F7' },
-  { name:'Gemini',    model:'Gemini 2.0 Flash',      tag:'Versatile', color:'#FFB800' },
-  { name:'OpenCode',  model:'DeepSeek V4',            tag:'Code-first',color:'#FF4D1C' },
-];
-
-const PLANS = [
-  { name:'Free',       price:'₹0',  mo:true,  features:['50 prompts / month','1 AI provider','10 free templates','Conversation history'], to:'/register' },
-  { name:'Pro',        price:'₹19', mo:true,  features:['Unlimited prompts','All 5 providers','All 24+ templates','Email support','7-day trial'], to:'/subscription', hot:true },
-  { name:'Team',       price:'₹49', mo:true,  features:['Everything in Pro','Team workspace (3+ seats)','Custom strategies','API access','Dedicated manager','14-day trial'], to:'/subscription' },
-];
-
-/* ─── Typewriter ─────────────────────────────────────────────── */
+/* ─── Typewriter ──────────────────────────────────────────────── */
 const TAGLINES = [
   'Your AI is only as good as your prompt.',
+  'Turn rough ideas into precision-crafted prompts.',
+  'Six strategies. Five providers. One platform.',
   'Stop guessing. Start forging.',
-  'From rough idea to precision prompt.',
-  'The layer between you and better AI.',
 ];
-function useTypewriter(texts, ts=48, ds=28, pause=2200) {
+function useTypewriter(texts, ts = 60, ds = 30, pause = 3000) {
   const [display, setDisplay] = useState('');
-  const [ti, setTi] = useState(0);
-  const [ci, setCi] = useState(0);
+  const [ti, setTi]   = useState(0);
+  const [ci, setCi]   = useState(0);
   const [del, setDel] = useState(false);
   useEffect(() => {
     const cur = texts[ti];
     const id = setTimeout(() => {
       if (!del) {
-        if (ci < cur.length) { setDisplay(cur.slice(0,ci+1)); setCi(c=>c+1); }
-        else setTimeout(()=>setDel(true), pause);
+        if (ci < cur.length) { setDisplay(cur.slice(0, ci + 1)); setCi(c => c + 1); }
+        else setTimeout(() => setDel(true), pause);
       } else {
-        if (ci > 0) { setDisplay(cur.slice(0,ci-1)); setCi(c=>c-1); }
-        else { setDel(false); setTi(i=>(i+1)%texts.length); }
+        if (ci > 0) { setDisplay(cur.slice(0, ci - 1)); setCi(c => c - 1); }
+        else { setDel(false); setTi(i => (i + 1) % texts.length); }
       }
     }, del ? ds : ts);
-    return ()=>clearTimeout(id);
+    return () => clearTimeout(id);
   }, [ci, del, ti, texts, ts, ds, pause]);
   return display;
 }
 
-/* ─── Count-up ───────────────────────────────────────────────── */
-function useCountUp(target, dur=1800) {
-  const [n, setN] = useState(0);
-  const ref = useRef(null);
-  const done = useRef(false);
-  useEffect(()=>{
-    const obs = new IntersectionObserver(([e])=>{
-      if (e.isIntersecting && !done.current) {
-        done.current = true;
-        const t0 = Date.now();
-        const tick = ()=>{
-          const p = Math.min((Date.now()-t0)/dur,1);
-          setN(Math.floor((1-Math.pow(1-p,3))*target));
-          if (p<1) requestAnimationFrame(tick);
-        };
-        requestAnimationFrame(tick);
-      }
-    },{threshold:0.4});
-    if (ref.current) obs.observe(ref.current);
-    return ()=>obs.disconnect();
-  },[target,dur]);
-  return [n, ref];
-}
+/* ─── Live demo streaming text ────────────────────────────────── */
+// Real example of what NexPrompt's chatbot strategy produces
+const FORGED_PROMPT =
+`You are Aria, a senior customer success specialist for a B2B SaaS platform.
 
-/* ─── Noise texture SVG ──────────────────────────────────────── */
-const Noise = () => (
-  <svg style={{position:'absolute',inset:0,width:'100%',height:'100%',opacity:0.035,pointerEvents:'none',zIndex:1}} xmlns="http://www.w3.org/2000/svg">
-    <filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="4" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter>
-    <rect width="100%" height="100%" filter="url(#noise)"/>
-  </svg>
-);
+PERSONA: Warm, knowledgeable, solution-first. You speak like a trusted colleague, not a script.
 
-/* ─── Ember particles ────────────────────────────────────────── */
-function Embers({ count=18 }) {
+CORE CAPABILITIES
+→ Account & billing management
+→ Technical troubleshooting (step-by-step)
+→ Feature walkthroughs with real examples
+→ Escalation routing with context handoff
+
+HARD BOUNDARIES
+• Never speculate on roadmap timelines
+• No pricing commitments without manager approval
+• Escalate legal or compliance questions immediately
+
+RESPONSE FORMAT
+• Lead with empathy, then solution
+• Use numbered steps for technical fixes
+• Keep replies under 150 words unless complexity demands more`;
+
+/* ─── Strategy tab data (accurate to actual strategies) ──────── */
+const STRATEGY_TABS = [
+  { id: 'chatbot',  label: 'Chatbot',  icon: 'forum' },
+  { id: 'coding',   label: 'Coding',   icon: 'code' },
+  { id: 'writing',  label: 'Writing',  icon: 'edit_note' },
+  { id: 'research', label: 'Research', icon: 'travel_explore' },
+  { id: 'image',    label: 'Image',    icon: 'palette' },
+  { id: 'video',    label: 'Video',    icon: 'videocam' },
+];
+
+const STRATEGIES = {
+  chatbot: {
+    title: 'Persona-Driven Chatbot System Prompts',
+    desc: 'Transforms your rough bot idea into a production-ready system prompt — covering identity, tone, capabilities, hard boundaries, conversation flow, and edge-case handling. Paste the output directly into any AI platform.',
+    features: ['10-dimension persona architecture', 'Hard boundary & escalation rules', 'Multi-turn conversation flow design'],
+  },
+  coding: {
+    title: 'Production-Grade Coding Prompts',
+    desc: 'Structures your request into a complete engineering brief: objective, tech stack, functional requirements, I/O contract, error handling, performance constraints, and test coverage — specific enough that a developer can implement without a single follow-up.',
+    features: ['Full I/O contract with typed examples', 'Edge cases & error handling spec', 'Architecture patterns & anti-patterns'],
+  },
+  writing: {
+    title: 'Tone & Voice Calibration',
+    desc: 'Turns a vague writing idea into a rich, immediately actionable brief — covering format, voice, target audience, core thesis, must-include elements, style guidance, opening hook, and closing impact.',
+    features: ['Audience-specific voice calibration', 'Must-include & must-avoid elements', 'Opening hook & closing impact direction'],
+  },
+  research: {
+    title: 'Structured Research & Analysis Prompts',
+    desc: 'Converts a broad topic into a scoped research directive with a sharp research question, sub-questions, analytical framework, source requirements, output structure, and depth standards — so two researchers produce comparable, structured outputs.',
+    features: ['Scoped research question + sub-questions', 'Analytical framework selection', 'Source requirements & confidence standards'],
+  },
+  image: {
+    title: 'Precision Image Generation Prompts',
+    desc: 'Translates abstract visual ideas into a single, highly detailed prompt covering subject, setting, art style, composition, lighting, colour palette, mood, texture, and quality tags — optimised for Midjourney v6, DALL-E 3, Stable Diffusion XL, and Flux.',
+    features: ['Platform-specific optimisation (MJ, DALL-E, SD)', 'Lighting, palette & mood specification', 'Composition & framing control'],
+  },
+  video: {
+    title: 'Video Production Briefs',
+    desc: 'Builds a complete video production prompt — concept, format, platform, visual style, audience, timed structure, script outline, B-roll, audio direction, and CTA — specific enough for a producer or scriptwriter to execute without additional briefing.',
+    features: ['Timed section breakdown with hook', 'Platform-specific format guidance', 'B-roll, audio & CTA specification'],
+  },
+};
+
+/* ─── 4-step process ──────────────────────────────────────────── */
+const STEPS = [
+  { n: '01', title: 'Describe your idea',   body: 'Write what you want in plain language — no prompting expertise needed. A sentence is enough to start.', icon: 'edit',           color: C.forge,   mt: 0  },
+  { n: '02', title: 'Pick a strategy',      body: 'Choose from six domain-tuned strategies: Chatbot, Coding, Writing, Research, Image, or Video.', icon: 'strategy',       color: C.emerald, mt: 32 },
+  { n: '03', title: 'Choose your provider', body: 'Select Groq, SambaNova, Anthropic, Gemini, or OpenCode. We tune the output syntax for each model.', icon: 'neurology',      color: C.blue,    mt: 48 },
+  { n: '04', title: 'Stream the result',    body: 'Watch your optimised prompt appear token by token. Cancel, refine with AI clarifying questions, and repeat.', icon: 'stream', color: C.forge,   mt: 64 },
+];
+
+/* ─── Providers (accurate to constants.js + tiers.js) ────────── */
+const PROVIDERS = [
+  { name: 'Groq',      model: 'LLaMA 3.3 70B',       tag: 'Fastest',    color: C.emerald, cost: '1 credit' },
+  { name: 'SambaNova', model: 'DeepSeek-V3.1',        tag: 'Powerful',   color: C.blue,    cost: '2 credits' },
+  { name: 'Anthropic', model: 'Claude 3.5 Sonnet',    tag: 'Nuanced',    color: '#A855F7', cost: '3 credits' },
+  { name: 'Gemini',    model: 'Gemini 2.0 Flash',     tag: 'Versatile',  color: C.gold,    cost: '2 credits' },
+  { name: 'OpenCode',  model: 'DeepSeek V4',          tag: 'Code-first', color: C.forge,   cost: '1 credit'  },
+];
+
+/* ─── Credit packs (accurate to tiers.js) ────────────────────── */
+const PACKS = [
+  {
+    id: 'starter',
+    name: 'Starter',
+    price: '₹19',
+    credits: 20,
+    bonus: 0,
+    perCredit: '₹0.95',
+    features: ['20 prompt generations', 'All 5 AI providers', 'All 6 domain strategies', '24+ templates'],
+    missing: [],
+    cta: 'Get Started',
+    to: '/register',
+    hot: false,
+    checkColor: C.blue,
+  },
+  {
+    id: 'standard',
+    name: 'Standard',
+    price: '₹79',
+    credits: 100,
+    bonus: 10,
+    perCredit: '₹0.79',
+    features: ['100 + 10 bonus credits', 'All 5 AI providers', 'All 6 domain strategies', 'AI clarifying questions', 'Prompt history & favorites'],
+    missing: [],
+    cta: 'Best Value',
+    to: '/register',
+    hot: true,
+    checkColor: C.forge,
+  },
+  {
+    id: 'premium',
+    name: 'Premium',
+    price: '₹149',
+    credits: 250,
+    bonus: 50,
+    perCredit: '₹0.60',
+    features: ['250 + 50 bonus credits', 'All 5 AI providers', 'All 6 domain strategies', 'Real-time streaming', 'Export & fork prompts'],
+    missing: [],
+    cta: 'Go Premium',
+    to: '/register',
+    hot: false,
+    checkColor: C.emerald,
+  },
+];
+
+/* ─── Ember particles ─────────────────────────────────────────── */
+function Embers({ count = 50 }) {
+  const items = useRef(
+    Array.from({ length: count }, (_, i) => ({
+      size:    1 + Math.random() * 3,
+      left:    `${Math.random() * 100}%`,
+      top:     `${Math.random() * 100}%`,
+      opacity: Math.random() * 0.5,
+      dur:     5 + Math.random() * 10,
+      delay:   Math.random() * 4,
+      color:   i % 3 === 0 ? C.forge : i % 3 === 1 ? C.gold : '#fff',
+    }))
+  ).current;
+
   return (
-    <div style={{position:'absolute',inset:0,overflow:'hidden',pointerEvents:'none'}}>
-      {Array.from({length:count}).map((_,i)=>(
+    <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', opacity: 0.4 }}>
+      {items.map((p, i) => (
         <motion.div key={i}
           style={{
-            position:'absolute',
-            width: 2+Math.random()*3,
-            height: 2+Math.random()*3,
-            borderRadius:'50%',
-            background: i%3===0 ? TOKEN.forge : i%3===1 ? TOKEN.gold : '#fff',
-            left:`${5+Math.random()*90}%`,
-            top:`${Math.random()*100}%`,
+            position: 'absolute', width: p.size, height: p.size,
+            borderRadius: '50%', background: p.color,
+            left: p.left, top: p.top,
+            boxShadow: `0 0 ${p.size * 2}px ${C.forge}`,
           }}
-          animate={{ y:[0,-(60+Math.random()*80),0], opacity:[0,0.7,0], scale:[0.5,1,0.5] }}
-          transition={{ duration:3+Math.random()*5, repeat:Infinity, delay:Math.random()*4, ease:'easeInOut' }}
+          animate={{ y: [0, -200, -400], opacity: [0, p.opacity, 0], rotate: [0, 360, 720] }}
+          transition={{ duration: p.dur, repeat: Infinity, delay: p.delay, ease: 'linear' }}
         />
       ))}
     </div>
   );
 }
 
-/* ─── Live Demo Widget ───────────────────────────────────────── */
+/* ─── Live Demo Widget ────────────────────────────────────────── */
 function LiveDemo() {
-  const [uc, setUc] = useState('chatbot');
-  const [raw, setRaw] = useState('');
-  const [out, setOut] = useState('');
-  const [running, setRunning] = useState(false);
-  const [done, setDone] = useState(false);
-  const outRef = useRef(null);
-  const ivRef = useRef(null);
+  const [text, setText] = useState('');
+  const timerRef = useRef(null);
 
-  const PLACEHOLDER = {
-    chatbot:'I need a support bot that helps users reset passwords without frustration.',
-    coding:'Build me a Node.js API for user registration with validation.',
-    writing:'Write a landing page headline for a remote-team productivity tool.',
-    research:'How are enterprise teams adopting AI coding assistants?',
-    image:'A futuristic library at sunset with holographic books.',
-  };
-
-  const run = useCallback(()=>{
-    if (!raw.trim()||running) return;
-    setRunning(true); setDone(false); setOut('');
-    const result = DEMO[uc];
-    let i=0;
-    ivRef.current = setInterval(()=>{
-      if (i<result.length) {
-        setOut(result.slice(0,++i));
-        if (outRef.current) outRef.current.scrollTop = outRef.current.scrollHeight;
+  const startStream = useCallback(() => {
+    setText('');
+    let i = 0;
+    timerRef.current = setInterval(() => {
+      if (i < FORGED_PROMPT.length) {
+        setText(FORGED_PROMPT.slice(0, ++i));
       } else {
-        clearInterval(ivRef.current);
-        setRunning(false); setDone(true);
+        clearInterval(timerRef.current);
+        setTimeout(startStream, 5000);
       }
-    }, 12);
-  },[raw,uc,running]);
+    }, 18);
+  }, []);
 
-  const reset = ()=>{ clearInterval(ivRef.current); setOut(''); setDone(false); setRunning(false); };
-
-  const cur = USE_CASES.find(u=>u.id===uc);
+  useEffect(() => { startStream(); return () => clearInterval(timerRef.current); }, [startStream]);
 
   return (
     <div style={{
-      background:'rgba(10,10,15,0.85)',
-      border:`1px solid rgba(255,77,28,0.18)`,
-      borderRadius:20,
-      overflow:'hidden',
-      backdropFilter:'blur(24px)',
-      boxShadow:'0 32px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)',
+      background: 'rgba(19,19,24,0.7)', backdropFilter: 'blur(12px)',
+      border: `1px solid rgba(255,77,28,0.1)`, borderRadius: 20, overflow: 'hidden',
+      boxShadow: `0 0 40px -10px ${C.forgeGlow}`,
     }}>
       {/* Window chrome */}
-      <div style={{display:'flex',alignItems:'center',gap:8,padding:'12px 16px',borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
-        <span style={{width:12,height:12,borderRadius:'50%',background:'#FF5F57'}}/>
-        <span style={{width:12,height:12,borderRadius:'50%',background:'#FFBD2E'}}/>
-        <span style={{width:12,height:12,borderRadius:'50%',background:'#28C840'}}/>
-        <span style={{marginLeft:8,fontSize:11,color:'rgba(255,255,255,0.25)',fontFamily:'monospace'}}>nexprompt — workspace</span>
-        <span style={{marginLeft:'auto',fontSize:10,color:TOKEN.forge,opacity:0.7}}>● LIVE</span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {['rgba(255,94,87,0.5)', 'rgba(255,189,46,0.5)', 'rgba(40,200,64,0.5)'].map((bg, i) => (
+            <div key={i} style={{ width: 12, height: 12, borderRadius: '50%', background: bg }} />
+          ))}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: 'rgba(255,255,255,0.25)', fontFamily: 'monospace', letterSpacing: '0.05em' }}>
+          <span className="material-symbols-outlined" style={{ fontSize: 14 }}>terminal</span>
+          NEXPROMPT · CHATBOT STRATEGY
+        </div>
       </div>
 
-      <div style={{padding:'20px 20px 24px'}}>
-        {/* Use case pills */}
-        <div style={{display:'flex',gap:6,overflowX:'auto',paddingBottom:4,marginBottom:16}}>
-          {USE_CASES.map(u=>{
-            const active = u.id===uc;
-            return (
-              <button key={u.id} onClick={()=>{setUc(u.id);reset();}}
-                style={{
-                  display:'flex',alignItems:'center',gap:6,
-                  padding:'7px 14px',borderRadius:99,border:'none',cursor:'pointer',
-                  whiteSpace:'nowrap',fontSize:12,fontWeight:500,
-                  background: active ? u.accent+'22' : 'rgba(255,255,255,0.04)',
-                  color: active ? u.accent : 'rgba(255,255,255,0.35)',
-                  outline: active ? `1px solid ${u.accent}44` : '1px solid transparent',
-                  transition:'all 0.18s',
-                }}>
-                <u.Icon size={13}/>{u.label}
-              </button>
-            );
-          })}
-        </div>
-
+      <div style={{ padding: '20px 20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* Input */}
-        <div style={{position:'relative',marginBottom:12}}>
-          <textarea
-            value={raw}
-            onChange={e=>setRaw(e.target.value)}
-            placeholder={PLACEHOLDER[uc]}
-            rows={2}
-            style={{
-              width:'100%',boxSizing:'border-box',
-              background:'rgba(255,255,255,0.04)',
-              border:'1px solid rgba(255,255,255,0.1)',
-              borderRadius:12,padding:'12px 14px',
-              color:'rgba(255,255,255,0.85)',fontSize:13,
-              outline:'none',resize:'none',
-              fontFamily:'inherit',lineHeight:1.55,
-            }}
-            onFocus={e=>e.target.style.borderColor='rgba(255,77,28,0.5)'}
-            onBlur={e=>e.target.style.borderColor='rgba(255,255,255,0.1)'}
-          />
+        <div style={{ background: 'rgba(10,10,15,0.5)', padding: 16, borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', marginBottom: 8 }}>
+            Raw Idea
+          </div>
+          <p style={{ fontSize: 13, color: C.mist, fontFamily: 'monospace', lineHeight: 1.6, margin: 0 }}>
+            Build a customer support chatbot for my SaaS product.
+          </p>
         </div>
 
-        {/* Forge button */}
-        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:out?16:0}}>
-          <motion.button
-            onClick={run}
-            disabled={!raw.trim()||running}
-            whileHover={raw.trim()&&!running?{scale:1.03}:{}}
-            whileTap={raw.trim()&&!running?{scale:0.97}:{}}
-            style={{
-              display:'flex',alignItems:'center',gap:8,
-              padding:'10px 22px',borderRadius:99,border:'none',cursor:raw.trim()&&!running?'pointer':'not-allowed',
-              background: raw.trim()&&!running
-                ? `linear-gradient(135deg, ${TOKEN.forge}, ${TOKEN.ember})`
-                : 'rgba(255,255,255,0.07)',
-              color:'white',fontSize:13,fontWeight:600,
-              opacity:raw.trim()||running?1:0.4,
-              boxShadow: raw.trim()&&!running ? `0 4px 24px ${TOKEN.forgeGlow}` : 'none',
-              transition:'all 0.2s',
-            }}>
-            {running
-              ? <motion.span animate={{rotate:360}} transition={{repeat:Infinity,duration:0.8,ease:'linear'}} style={{display:'inline-block',width:14,height:14,borderRadius:'50%',border:'2px solid rgba(255,255,255,0.3)',borderTopColor:'#fff'}}/>
-              : <Sparkles size={14}/>}
-            {running ? 'Forging...' : 'Forge Prompt'}
-          </motion.button>
-          {done && <span style={{fontSize:11,color:'rgba(255,255,255,0.3)'}}>{out.length} chars · optimized</span>}
+        {/* Processing */}
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: '4px 0' }}>
+          <motion.span className="material-symbols-outlined" style={{ fontSize: 18, color: C.forge }}
+            animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }}>
+            cyclone
+          </motion.span>
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: C.forge }}>
+            Applying Chatbot Strategy...
+          </span>
         </div>
 
         {/* Output */}
-        <AnimatePresence>
-          {out && (
-            <motion.div initial={{opacity:0,height:0}} animate={{opacity:1,height:'auto'}} exit={{opacity:0,height:0}}>
-              <div style={{borderTop:'1px solid rgba(255,255,255,0.06)',paddingTop:16}}>
-                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
-                  <span style={{
-                    display:'inline-flex',alignItems:'center',gap:5,
-                    fontSize:11,fontWeight:600,color:cur.accent,
-                    background:cur.accent+'18',borderRadius:99,padding:'3px 10px',
-                  }}>
-                    <cur.Icon size={10}/>{cur.label} · optimized
-                  </span>
-                </div>
-                <div ref={outRef} style={{
-                  maxHeight:200,overflowY:'auto',
-                  background:'rgba(0,0,0,0.4)',border:'1px solid rgba(255,255,255,0.07)',
-                  borderRadius:10,padding:'14px 16px',
-                  fontSize:12,lineHeight:1.7,whiteSpace:'pre-wrap',
-                  fontFamily:'monospace',color:'rgba(255,255,255,0.7)',
-                }}>
-                  {out}
-                  {running && (
-                    <motion.span animate={{opacity:[1,0]}} transition={{repeat:Infinity,duration:0.7}}
-                      style={{display:'inline-block',width:7,height:13,background:TOKEN.forge,marginLeft:2,verticalAlign:'text-bottom'}}/>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <div style={{ background: 'rgba(255,77,28,0.05)', padding: 16, borderRadius: 12, border: `1px solid rgba(255,77,28,0.2)`, position: 'relative', minHeight: 160 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: C.forge, marginBottom: 8 }}>
+            Forged System Prompt
+          </div>
+          <p style={{ fontSize: 12, color: C.onSurface, fontFamily: 'monospace', lineHeight: 1.75, whiteSpace: 'pre-wrap', margin: 0 }}>
+            {text}
+            <motion.span animate={{ opacity: [1, 0] }} transition={{ repeat: Infinity, duration: 0.7 }}
+              style={{ display: 'inline-block', width: 7, height: 13, background: C.forge, marginLeft: 2, verticalAlign: 'text-bottom' }} />
+          </p>
+          <div style={{ position: 'absolute', bottom: 10, right: 12, display: 'flex', gap: 8 }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 18, color: 'rgba(255,77,28,0.4)', cursor: 'pointer' }}>content_copy</span>
+            <span className="material-symbols-outlined" style={{ fontSize: 18, color: 'rgba(255,77,28,0.4)', cursor: 'pointer' }}>history</span>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-/* ─── Stat Card ──────────────────────────────────────────────── */
-function StatCard({ value, suffix, label, Icon }) {
-  const [n, ref] = useCountUp(value);
-  return (
-    <motion.div ref={ref}
-      initial={{opacity:0,y:20}} whileInView={{opacity:1,y:0}} viewport={{once:true}}
-      style={{textAlign:'center',padding:'28px 16px',
-        background:'rgba(255,255,255,0.025)',
-        border:'1px solid rgba(255,255,255,0.07)',borderRadius:16,
-      }}>
-      <div style={{
-        width:44,height:44,borderRadius:12,margin:'0 auto 14px',
-        background:TOKEN.forgeGlow,display:'flex',alignItems:'center',justifyContent:'center',
-      }}>
-        <Icon size={20} color={TOKEN.forge}/>
-      </div>
-      <div style={{fontSize:36,fontWeight:700,
-        background:`linear-gradient(135deg,${TOKEN.forge},${TOKEN.gold})`,
-        WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',
-        fontFamily:'"Clash Display",sans-serif',
-      }}>{n}{suffix}</div>
-      <div style={{fontSize:13,color:'rgba(255,255,255,0.35)',marginTop:4}}>{label}</div>
-    </motion.div>
-  );
-}
-
-/* ─── Section heading ────────────────────────────────────────── */
-function SectionHead({ tag, title, sub }) {
-  return (
-    <motion.div initial={{opacity:0,y:16}} whileInView={{opacity:1,y:0}} viewport={{once:true}}
-      style={{textAlign:'center',marginBottom:56}}>
-      {tag && (
-        <span style={{
-          display:'inline-block',fontSize:11,fontWeight:700,letterSpacing:'0.12em',
-          textTransform:'uppercase',color:TOKEN.forge,
-          background:TOKEN.forgeGlow,borderRadius:99,padding:'4px 14px',marginBottom:16,
-        }}>{tag}</span>
-      )}
-      <h2 style={{fontSize:'clamp(28px,4vw,44px)',fontWeight:700,margin:'0 0 14px',lineHeight:1.15,
-        fontFamily:'"Clash Display",sans-serif',color:'#fff',
-      }}>{title}</h2>
-      {sub && <p style={{fontSize:16,color:'rgba(255,255,255,0.4)',maxWidth:480,margin:'0 auto',lineHeight:1.65}}>{sub}</p>}
-    </motion.div>
-  );
-}
-
-/* ─── MAIN COMPONENT ─────────────────────────────────────────── */
+/* ─── MAIN COMPONENT ──────────────────────────────────────────── */
 export default function Landing() {
-  const tagline = useTypewriter(TAGLINES);
-  const [activeUc, setActiveUc] = useState(0);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const { scrollY } = useScroll();
-  const headerBg = useTransform(scrollY, [0,80], ['rgba(10,10,15,0)', 'rgba(10,10,15,0.92)']);
+  const tagline         = useTypewriter(TAGLINES);
+  const [activeStrategy, setActiveStrategy] = useState('chatbot');
+  const { scrollY }     = useScroll();
+  const headerBg        = useTransform(scrollY, [0, 80], ['rgba(19,19,24,0)', 'rgba(19,19,24,0.95)']);
 
-  const scrollTo = id => document.getElementById(id)?.scrollIntoView({ behavior:'smooth' });
+  const scrollTo = id => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+  const strategy = STRATEGIES[activeStrategy];
 
   return (
-    <div style={{ background:TOKEN.ink, color:'#fff', minHeight:'100vh', fontFamily:'"Satoshi",system-ui,sans-serif', overflowX:'hidden' }}>
-
-      {/* Google Fonts */}
+    <div style={{ background: C.bg, color: C.onSurface, minHeight: '100vh', fontFamily: 'Inter, system-ui, sans-serif', overflowX: 'hidden' }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&display=swap');
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        ::selection { background: ${TOKEN.forge}55; }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: ${TOKEN.forge}55; border-radius: 4px; }
-        .forge-grad { background: linear-gradient(135deg, ${TOKEN.forge}, ${TOKEN.gold}); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .provider-card:hover { border-color: rgba(255,255,255,0.18) !important; transform: translateY(-6px) !important; }
-        .plan-card { transition: transform 0.25s, border-color 0.25s; }
-        .plan-card:hover { transform: translateY(-6px); }
-        .step-card:hover .step-icon { transform: scale(1.12); }
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+        * { box-sizing: border-box; }
+        .material-symbols-outlined { font-family:'Material Symbols Outlined'; font-weight:normal; font-style:normal; font-size:24px; line-height:1; letter-spacing:normal; text-transform:none; display:inline-block; white-space:nowrap; word-wrap:normal; direction:ltr; -webkit-font-smoothing:antialiased; }
+        .syne { font-family:'Syne',sans-serif; }
+        ::selection { background:${C.forge}; color:#fff; }
+        ::-webkit-scrollbar { width:4px; }
+        ::-webkit-scrollbar-thumb { background:${C.forge}55; border-radius:4px; }
+        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+        .animate-float { animation:float 6s ease-in-out infinite; }
+        @keyframes ping { 0%{transform:scale(1);opacity:.75} 75%,100%{transform:scale(2);opacity:0} }
+        .animate-ping { animation:ping 1.5s cubic-bezier(0,0,.2,1) infinite; }
+        .nav-link { background:none; border:none; color:rgba(228,225,233,0.6); font-weight:400; font-size:14px; cursor:pointer; font-family:Inter,sans-serif; padding:4px 12px; border-radius:4px; transition:all .15s; }
+        .nav-link:hover { color:${C.forge}; background:rgba(255,255,255,0.05); }
+        .glass { background:rgba(19,19,24,0.7); backdrop-filter:blur(12px); border:1px solid rgba(255,77,28,0.1); }
+        .forge-glow { box-shadow:0 0 40px -10px ${C.forgeGlow}; }
       `}</style>
 
-      {/* ── Header ── */}
-      <motion.header style={{
-        position:'fixed',top:0,left:0,right:0,zIndex:100,
-        display:'flex',alignItems:'center',justifyContent:'space-between',
-        padding:'0 clamp(16px,4vw,48px)',height:64,
-        background:headerBg,
-        backdropFilter:'blur(20px)',
-        borderBottom:'1px solid rgba(255,255,255,0.05)',
+      <Embers count={50} />
+
+      {/* ── Nav ── */}
+      <motion.nav style={{
+        position: 'fixed', top: 0, width: '100%', zIndex: 50,
+        background: headerBg, backdropFilter: 'blur(20px)',
+        borderBottom: '1px solid rgba(255,255,255,0.05)',
+        boxShadow: `0 0 20px rgba(255,77,28,0.1)`,
       }}>
-        <span onClick={()=>window.scrollTo({top:0,behavior:'smooth'})}
-          style={{fontSize:20,fontWeight:800,cursor:'pointer',fontFamily:'"Syne",sans-serif',
-            background:`linear-gradient(90deg,${TOKEN.forge},${TOKEN.gold})`,
-            WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',
-          }}>
-          NexPrompt
-        </span>
-
-        <nav style={{display:'flex',alignItems:'center',gap:32}}>
-          {[['how-it-works','Process'],['strategies','Strategies'],['providers','Models'],['pricing','Pricing']].map(([id,label])=>(
-            <button key={id} onClick={()=>scrollTo(id)}
-              style={{background:'none',border:'none',color:'rgba(255,255,255,0.45)',fontSize:13,fontWeight:500,cursor:'pointer',transition:'color 0.15s'}}
-              onMouseEnter={e=>e.target.style.color='#fff'} onMouseLeave={e=>e.target.style.color='rgba(255,255,255,0.45)'}>
-              {label}
-            </button>
-          ))}
-        </nav>
-
-        <div style={{display:'flex',gap:8}}>
-          <Link to="/login" style={{
-            padding:'8px 18px',borderRadius:99,border:'1px solid rgba(255,255,255,0.12)',
-            color:'rgba(255,255,255,0.6)',fontSize:13,fontWeight:500,textDecoration:'none',
-            transition:'all 0.15s',
-          }}
-          onMouseEnter={e=>{e.target.style.borderColor='rgba(255,255,255,0.3)';e.target.style.color='#fff';}}
-          onMouseLeave={e=>{e.target.style.borderColor='rgba(255,255,255,0.12)';e.target.style.color='rgba(255,255,255,0.6)';}}>
-            Sign in
-          </Link>
-          <Link to="/register" style={{
-            padding:'8px 18px',borderRadius:99,
-            background:`linear-gradient(135deg,${TOKEN.forge},${TOKEN.ember})`,
-            color:'#fff',fontSize:13,fontWeight:600,textDecoration:'none',
-            boxShadow:`0 4px 16px ${TOKEN.forgeGlow}`,
-            transition:'opacity 0.15s',
-          }}
-          onMouseEnter={e=>e.target.style.opacity='0.85'} onMouseLeave={e=>e.target.style.opacity='1'}>
-            Get started free
-          </Link>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px clamp(16px,4vw,48px)', maxWidth: 1280, margin: '0 auto' }}>
+          <span className="syne" style={{ fontSize: 22, fontWeight: 800, color: C.forge, letterSpacing: '-0.02em', cursor: 'pointer' }}
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+            NexPrompt
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button className="nav-link" style={{ color: C.forge, fontWeight: 700 }} onClick={() => scrollTo('process')}>Process</button>
+            <button className="nav-link" onClick={() => scrollTo('pricing')}>Pricing</button>
+            <button className="nav-link" onClick={() => scrollTo('strategies')}>Showcase</button>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Link to="/login" className="nav-link" style={{ textDecoration: 'none' }}>Sign In</Link>
+            <Link to="/register" style={{
+              background: C.forge, color: '#fff', padding: '8px 24px', borderRadius: 9999,
+              fontWeight: 700, fontSize: 14, textDecoration: 'none',
+              boxShadow: `0 4px 16px rgba(255,77,28,0.2)`, transition: 'filter .2s',
+            }}
+              onMouseEnter={e => e.target.style.filter = 'brightness(1.1)'}
+              onMouseLeave={e => e.target.style.filter = 'brightness(1)'}>
+              Get Started
+            </Link>
+          </div>
         </div>
-      </motion.header>
+      </motion.nav>
 
       {/* ── Hero ── */}
-      <section style={{
-        position:'relative',minHeight:'100vh',display:'flex',flexDirection:'column',
-        alignItems:'center',justifyContent:'center',
-        padding:'120px clamp(16px,6vw,80px) 80px',textAlign:'center',
-        overflow:'hidden',
-      }}>
-        <Noise/>
-        <Embers count={22}/>
+      <section style={{ position: 'relative', padding: '128px clamp(16px,4vw,48px) 80px', maxWidth: 1280, margin: '0 auto', zIndex: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))', gap: 64, alignItems: 'center' }}>
 
-        {/* Background glow */}
-        <div style={{position:'absolute',top:'20%',left:'50%',transform:'translateX(-50%)',
-          width:700,height:500,borderRadius:'50%',
-          background:`radial-gradient(ellipse, ${TOKEN.forge}12 0%, transparent 65%)`,
-          pointerEvents:'none',zIndex:0,
-        }}/>
-
-        {/* Grid lines */}
-        <div style={{position:'absolute',inset:0,pointerEvents:'none',zIndex:0,
-          backgroundImage:`linear-gradient(rgba(255,77,28,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,77,28,0.05) 1px, transparent 1px)`,
-          backgroundSize:'60px 60px',
-        }}/>
-
-        <div style={{position:'relative',zIndex:2}}>
-          <motion.div initial={{opacity:0,y:-12}} animate={{opacity:1,y:0}} transition={{duration:0.5}}>
-            <span style={{
-              display:'inline-flex',alignItems:'center',gap:8,
-              fontSize:11,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',
-              color:TOKEN.forge,background:TOKEN.forgeGlow,
-              border:`1px solid ${TOKEN.forge}33`,borderRadius:99,padding:'6px 16px',marginBottom:28,
-            }}>
-              <Sparkles size={11}/>  AI Prompt Engineering Platform
-            </span>
-          </motion.div>
-
-          <motion.h1 initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} transition={{delay:0.1,duration:0.6}}
-            style={{
-              fontSize:'clamp(44px,8vw,100px)',fontWeight:800,lineHeight:1.0,
-              fontFamily:'"Syne",sans-serif',letterSpacing:'-0.03em',
-              maxWidth:900,margin:'0 auto 24px',
-            }}>
-            Forge perfect<br/>
-            <span className="forge-grad">prompts</span> with AI
-          </motion.h1>
-
-          <motion.p initial={{opacity:0}} animate={{opacity:1}} transition={{delay:0.25}}
-            style={{fontSize:18,color:'rgba(255,255,255,0.45)',maxWidth:520,margin:'0 auto 40px',lineHeight:1.6,minHeight:28}}>
-            {tagline}
-            <motion.span animate={{opacity:[1,0]}} transition={{repeat:Infinity,duration:0.75}}
-              style={{display:'inline-block',width:2,height:18,background:TOKEN.forge,marginLeft:3,verticalAlign:'middle'}}/>
-          </motion.p>
-
-          <motion.div initial={{opacity:0,y:12}} animate={{opacity:1,y:0}} transition={{delay:0.35}}
-            style={{display:'flex',gap:14,justifyContent:'center',flexWrap:'wrap',marginBottom:64}}>
-            <Link to="/register" style={{
-              display:'inline-flex',alignItems:'center',gap:8,
-              padding:'14px 32px',borderRadius:99,
-              background:`linear-gradient(135deg,${TOKEN.forge},${TOKEN.ember})`,
-              color:'#fff',fontSize:15,fontWeight:700,textDecoration:'none',
-              boxShadow:`0 8px 32px ${TOKEN.forgeGlow}`,
-              transition:'transform 0.2s, box-shadow 0.2s',
-            }}
-            onMouseEnter={e=>{e.target.style.transform='translateY(-2px)';e.target.style.boxShadow=`0 12px 40px ${TOKEN.forge}55`;}}
-            onMouseLeave={e=>{e.target.style.transform='translateY(0)';e.target.style.boxShadow=`0 8px 32px ${TOKEN.forgeGlow}`;}}>
-              Start building <ArrowRight size={15}/>
-            </Link>
-            <button onClick={()=>scrollTo('strategies')} style={{
-              display:'inline-flex',alignItems:'center',gap:8,
-              padding:'14px 32px',borderRadius:99,
-              background:'rgba(255,255,255,0.04)',
-              border:'1px solid rgba(255,255,255,0.12)',
-              color:'rgba(255,255,255,0.7)',fontSize:15,fontWeight:600,cursor:'pointer',
-              transition:'all 0.2s',
-            }}
-            onMouseEnter={e=>{e.target.style.background='rgba(255,255,255,0.08)';e.target.style.borderColor='rgba(255,255,255,0.25)';e.target.style.color='#fff';}}
-            onMouseLeave={e=>{e.target.style.background='rgba(255,255,255,0.04)';e.target.style.borderColor='rgba(255,255,255,0.12)';e.target.style.color='rgba(255,255,255,0.7)';}}>
-              <Play size={14}/> See it work
-            </button>
-          </motion.div>
-
-          {/* Demo */}
-          <motion.div initial={{opacity:0,y:32}} animate={{opacity:1,y:0}} transition={{delay:0.5,duration:0.7}}
-            style={{maxWidth:700,margin:'0 auto',width:'100%'}}>
-            <LiveDemo/>
-          </motion.div>
-
-          <motion.button initial={{opacity:0}} animate={{opacity:1}} transition={{delay:1.4}}
-            onClick={()=>scrollTo('how-it-works')}
-            style={{
-              background:'none',border:'none',cursor:'pointer',
-              display:'flex',flexDirection:'column',alignItems:'center',gap:6,
-              color:'rgba(255,255,255,0.2)',marginTop:48,
-              transition:'color 0.2s',
-            }}
-            onMouseEnter={e=>e.currentTarget.style.color='rgba(255,255,255,0.5)'}
-            onMouseLeave={e=>e.currentTarget.style.color='rgba(255,255,255,0.2)'}>
-            <span style={{fontSize:11,letterSpacing:'0.08em',textTransform:'uppercase'}}>Explore</span>
-            <motion.div animate={{y:[0,5,0]}} transition={{repeat:Infinity,duration:1.6}}>
-              <ChevronDown size={16}/>
+          {/* Left */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+            {/* Badge */}
+            <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                padding: '4px 12px', borderRadius: 9999,
+                border: `1px solid rgba(255,77,28,0.3)`, background: 'rgba(255,77,28,0.05)',
+                color: C.forge, fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase',
+              }}>
+                <span style={{ position: 'relative', display: 'inline-flex', width: 8, height: 8 }}>
+                  <span className="animate-ping" style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: C.forge, opacity: 0.75 }} />
+                  <span style={{ position: 'relative', width: 8, height: 8, borderRadius: '50%', background: C.forge, display: 'inline-block' }} />
+                </span>
+                Groq · SambaNova · Claude · Gemini · OpenCode
+              </span>
             </motion.div>
-          </motion.button>
+
+            {/* Headline */}
+            <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.6 }}
+              className="syne"
+              style={{ fontSize: 'clamp(44px,8vw,80px)', fontWeight: 800, lineHeight: 1.1, letterSpacing: '-0.02em', margin: 0 }}>
+              Forge perfect<br />prompts with{' '}
+              <span style={{ color: C.forge }}>AI</span>
+            </motion.h1>
+
+            {/* Typewriter */}
+            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }}
+              style={{ fontSize: 18, color: C.onSurfaceVariant, maxWidth: 520, lineHeight: 1.6, margin: 0, minHeight: 28 }}>
+              <span style={{ color: C.onSurface, fontWeight: 700 }}>{tagline}</span>
+              <motion.span animate={{ opacity: [1, 0] }} transition={{ repeat: Infinity, duration: 0.7 }}
+                style={{ display: 'inline-block', width: 2, height: 18, background: C.forge, marginLeft: 3, verticalAlign: 'middle' }} />
+            </motion.p>
+
+            {/* CTAs */}
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
+              style={{ display: 'flex', flexWrap: 'wrap', gap: 16, paddingTop: 16 }}>
+              <Link to="/register" style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                background: C.forge, color: '#fff', padding: '16px 32px', borderRadius: 12,
+                fontWeight: 700, fontSize: 15, textDecoration: 'none',
+                boxShadow: `0 0 40px -10px ${C.forgeGlow}`, transition: 'filter .2s',
+              }}
+                onMouseEnter={e => e.target.style.filter = 'brightness(1.1)'}
+                onMouseLeave={e => e.target.style.filter = 'brightness(1)'}>
+                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>bolt</span>
+                Start Forging Free
+              </Link>
+              <button onClick={() => scrollTo('strategies')} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                background: 'rgba(19,19,24,0.7)', backdropFilter: 'blur(12px)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                color: C.onSurface, padding: '16px 32px', borderRadius: 12,
+                fontWeight: 700, fontSize: 15, cursor: 'pointer', transition: 'background .2s',
+              }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(19,19,24,0.7)'}>
+                View Showcase
+              </button>
+            </motion.div>
+          </div>
+
+          {/* Right: Live Demo */}
+          <motion.div initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5, duration: 0.7 }}
+            className="animate-float" style={{ position: 'relative' }}>
+            <LiveDemo />
+            <div style={{ position: 'absolute', zIndex: -1, bottom: -40, right: -40, width: 256, height: 256, background: 'rgba(255,77,28,0.2)', filter: 'blur(100px)', borderRadius: '50%' }} />
+          </motion.div>
         </div>
       </section>
 
       {/* ── Stats ── */}
-      <section style={{padding:'60px clamp(16px,6vw,80px)',maxWidth:900,margin:'0 auto'}}>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:16}}>
+      <section style={{ padding: '80px clamp(16px,4vw,48px)', background: 'rgba(14,14,19,0.5)', borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 48, textAlign: 'center' }}>
           {[
-            {value:24,suffix:'+',label:'Expert Templates',Icon:Sparkles},
-            {value:5,suffix:'',label:'AI Providers',Icon:Cpu},
-            {value:99,suffix:'%',label:'Uptime SLA',Icon:Shield},
-            {value:3,suffix:'K+',label:'Active Users',Icon:Users},
-          ].map((s,i)=>(
-            <motion.div key={s.label} initial={{opacity:0,y:20}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:i*0.09}}>
-              <StatCard {...s}/>
+            { value: '24+',  label: 'Expert Templates' },
+            { value: '6',    label: 'Domain Strategies', border: true },
+            { value: '5',    label: 'AI Providers' },
+          ].map((s, i) => (
+            <motion.div key={s.label}
+              initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}
+              style={{ display: 'flex', flexDirection: 'column', gap: 8, borderLeft: s.border ? '1px solid rgba(255,255,255,0.05)' : 'none', borderRight: s.border ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+              <div className="syne" style={{ fontSize: 'clamp(36px,5vw,44px)', fontWeight: 800, color: C.forge }}>{s.value}</div>
+              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(228,225,233,0.5)' }}>{s.label}</div>
             </motion.div>
           ))}
         </div>
       </section>
 
-      {/* ── How it works ── */}
-      <section id="how-it-works" style={{padding:'80px clamp(16px,6vw,80px)',maxWidth:1100,margin:'0 auto'}}>
-        <SectionHead tag="Process" title="Four steps to a better prompt" sub="From rough idea to optimized AI response — in under 10 seconds."/>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:20,position:'relative'}}>
-          {/* Connector line */}
-          <div style={{position:'absolute',top:36,left:'12%',right:'12%',height:1,
-            background:`linear-gradient(90deg,transparent,${TOKEN.forge}44,transparent)`,
-            display:'none',
-          }}/>
-          {STEPS.map((s,i)=>(
-            <motion.div key={s.n} className="step-card"
-              initial={{opacity:0,y:28}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:i*0.12}}
-              style={{
-                background:'rgba(255,255,255,0.025)',
-                border:'1px solid rgba(255,255,255,0.07)',
-                borderRadius:18,padding:'32px 24px',
-                position:'relative',overflow:'hidden',
-              }}>
-              <div style={{
-                position:'absolute',top:16,right:20,
-                fontSize:48,fontWeight:800,color:'rgba(255,255,255,0.03)',
-                fontFamily:'"Syne",sans-serif',lineHeight:1,
-              }}>{s.n}</div>
-              <div className="step-icon" style={{
-                width:52,height:52,borderRadius:14,marginBottom:20,
-                background:TOKEN.forgeGlow,
-                border:`1px solid ${TOKEN.forge}33`,
-                display:'flex',alignItems:'center',justifyContent:'center',
-                transition:'transform 0.25s',
-              }}>
-                <s.Icon size={22} color={TOKEN.forge}/>
-              </div>
-              <div style={{fontSize:11,fontWeight:700,letterSpacing:'0.1em',color:TOKEN.forge,textTransform:'uppercase',marginBottom:8}}>{s.n}</div>
-              <h3 style={{fontSize:17,fontWeight:700,marginBottom:10,fontFamily:'"Syne",sans-serif'}}>{s.title}</h3>
-              <p style={{fontSize:13,color:'rgba(255,255,255,0.4)',lineHeight:1.65}}>{s.body}</p>
-            </motion.div>
-          ))}
-        </div>
-      </section>
+      {/* ── Strategy Tabs ── */}
+      <section id="strategies" style={{ padding: '80px clamp(16px,4vw,48px)', maxWidth: 1280, margin: '0 auto' }}>
+        <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} style={{ textAlign: 'center', marginBottom: 48 }}>
+          <h2 className="syne" style={{ fontSize: 'clamp(28px,4vw,44px)', fontWeight: 700, marginBottom: 16 }}>
+            Master Every <span style={{ color: C.forge }}>Domain</span>
+          </h2>
+          <p style={{ color: 'rgba(228,225,233,0.5)', maxWidth: 560, margin: '0 auto', fontSize: 16, lineHeight: 1.65 }}>
+            Six battle-tested strategies — each purpose-built for its domain. Pick one and NexPrompt applies the right framework automatically.
+          </p>
+        </motion.div>
 
-      {/* ── Strategies ── */}
-      <section id="strategies" style={{padding:'80px clamp(16px,6vw,80px)',maxWidth:1100,margin:'0 auto'}}>
-        <SectionHead tag="Strategies" title={<>One tool, <span className="forge-grad">five domains</span></>} sub="Each use case has a dedicated strategy engine tuned for its domain."/>
-
-        {/* Tabs */}
-        <div style={{display:'flex',flexWrap:'wrap',justifyContent:'center',gap:10,marginBottom:32}}>
-          {USE_CASES.map((u,i)=>(
-            <motion.button key={u.id} onClick={()=>setActiveUc(i)}
-              whileTap={{scale:0.96}}
+        {/* Tab bar */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginBottom: 40, padding: 4, background: 'rgba(10,10,15,0.5)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 16, maxWidth: 860, margin: '0 auto 40px' }}>
+          {STRATEGY_TABS.map(tab => (
+            <button key={tab.id} onClick={() => setActiveStrategy(tab.id)}
               style={{
-                display:'flex',alignItems:'center',gap:8,
-                padding:'10px 20px',borderRadius:99,border:'none',cursor:'pointer',
-                fontSize:13,fontWeight:600,transition:'all 0.2s',
-                background: activeUc===i ? u.accent : 'rgba(255,255,255,0.05)',
-                color: activeUc===i ? '#fff' : 'rgba(255,255,255,0.4)',
-                boxShadow: activeUc===i ? `0 4px 20px ${u.accent}44` : 'none',
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '12px 20px', borderRadius: 12, cursor: 'pointer', fontSize: 14, transition: 'all .2s',
+                background: activeStrategy === tab.id ? 'rgba(255,77,28,0.1)' : 'transparent',
+                color:      activeStrategy === tab.id ? C.forge : 'rgba(228,225,233,0.5)',
+                border:     activeStrategy === tab.id ? `1px solid rgba(255,77,28,0.2)` : '1px solid transparent',
+                fontWeight: activeStrategy === tab.id ? 700 : 400,
               }}>
-              <u.Icon size={14}/>{u.label}
-            </motion.button>
+              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{tab.icon}</span>
+              {tab.label}
+            </button>
           ))}
         </div>
 
+        {/* Strategy content */}
         <AnimatePresence mode="wait">
-          <motion.div key={activeUc}
-            initial={{opacity:0,y:12}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-12}} transition={{duration:0.22}}>
-            <div style={{
-              background:'rgba(255,255,255,0.025)',
-              border:`1px solid ${USE_CASES[activeUc].accent}33`,
-              borderRadius:20,padding:'28px 32px',maxWidth:780,margin:'0 auto',
-            }}>
-              <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:20}}>
-                <div style={{
-                  width:48,height:48,borderRadius:14,
-                  background:USE_CASES[activeUc].accent+'20',
-                  border:`1px solid ${USE_CASES[activeUc].accent}44`,
-                  display:'flex',alignItems:'center',justifyContent:'center',
-                }}>
-                  {React.createElement(USE_CASES[activeUc].Icon, {size:22,color:USE_CASES[activeUc].accent})}
-                </div>
-                <div>
-                  <h3 style={{fontSize:16,fontWeight:700,fontFamily:'"Syne",sans-serif'}}>{USE_CASES[activeUc].label} Strategy</h3>
-                  <p style={{fontSize:12,color:'rgba(255,255,255,0.35)',marginTop:2}}>Optimized output format for this domain</p>
-                </div>
-              </div>
-              <div style={{
-                background:'rgba(0,0,0,0.4)',borderRadius:12,padding:'18px 20px',
-                fontFamily:'monospace',fontSize:12,lineHeight:1.75,
-                color:'rgba(255,255,255,0.65)',whiteSpace:'pre-wrap',maxHeight:260,overflowY:'auto',
-                border:'1px solid rgba(255,255,255,0.06)',
-              }}>
-                {DEMO[USE_CASES[activeUc].id]}
-              </div>
+          <motion.div key={activeStrategy}
+            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.22 }}
+            className="glass forge-glow"
+            style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))', gap: 48, alignItems: 'center', borderRadius: 24, padding: 'clamp(24px,4vw,48px)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              <h3 className="syne" style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{strategy.title}</h3>
+              <p style={{ color: 'rgba(228,225,233,0.5)', fontSize: 14, lineHeight: 1.7, margin: 0 }}>{strategy.desc}</p>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {strategy.features.map(f => (
+                  <li key={f} style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 14, color: C.onSurface }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 20, color: C.forge }}>check_circle</span>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div style={{ position: 'relative', borderRadius: 16, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <img
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuBE6yhH2vs2OfklEZ77_dSVqoucM0l4dUnGoqqEmius7lQhtCs_lPy6xx8VBwgyG3C-d8E7XpksoEADzPz5AVao8PwPXDl6Be_vSHN7AJETqsE5IJAJIdopuxcktydLy81eDQlTQy_FBUnbqhcviG47A6I7AjpHtd-A8H4Api86b0G7i4GdnrQ5TvfQtOrpIS5_ywQUUKEnhe9OSb9g5QT0PgECVAwUq1hScMoSeRTQ5X6dwj_fxgnScMhdxOkU02iKzZdg_JjxngA"
+                alt="AI Visualization"
+                style={{ width: '100%', height: 400, objectFit: 'cover', display: 'block', transition: 'transform .7s' }}
+                onMouseEnter={e => e.target.style.transform = 'scale(1.05)'}
+                onMouseLeave={e => e.target.style.transform = 'scale(1)'}
+              />
+              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top,rgba(10,10,15,1) 0%,transparent 50%)' }} />
             </div>
           </motion.div>
         </AnimatePresence>
       </section>
 
-      {/* ── Providers ── */}
-      <section id="providers" style={{padding:'80px clamp(16px,6vw,80px)',maxWidth:1100,margin:'0 auto'}}>
-        <SectionHead tag="AI Models" title={<>Powered by <span className="forge-grad">top providers</span></>} sub="Switch between providers at any time — pick the right model for each task."/>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(170px,1fr))',gap:16}}>
-          {PROVIDERS.map((p,i)=>(
-            <motion.div key={p.name} className="provider-card"
-              initial={{opacity:0,scale:0.92}} whileInView={{opacity:1,scale:1}} viewport={{once:true}} transition={{delay:i*0.08}}
+      {/* ── 4-Step Process ── */}
+      <section id="process" style={{ padding: '96px clamp(16px,4vw,48px)', maxWidth: 1280, margin: '0 auto' }}>
+        <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} style={{ marginBottom: 64 }}>
+          <h2 className="syne" style={{ fontSize: 'clamp(28px,4vw,44px)', fontWeight: 700, marginBottom: 8 }}>
+            The Forging <span style={{ color: C.forge }}>Ritual</span>
+          </h2>
+          <p style={{ color: 'rgba(228,225,233,0.5)', fontSize: 16 }}>From rough idea to precision prompt in four steps — under 10 seconds.</p>
+        </motion.div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 24 }}>
+          {STEPS.map((step, i) => (
+            <motion.div key={step.n}
+              initial={{ opacity: 0, y: 28 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.12 }}
+              className="glass"
               style={{
-                background:'rgba(255,255,255,0.025)',
-                border:'1px solid rgba(255,255,255,0.07)',
-                borderRadius:16,padding:'28px 20px',textAlign:'center',
-                cursor:'default',transition:'all 0.25s',
+                borderRadius: 16, padding: 32,
+                borderTop:    (i === 0 || i === 3) ? `2px solid rgba(255,77,28,0.4)` : undefined,
+                borderBottom: i === 3 ? `2px solid rgba(255,77,28,0.4)` : undefined,
+                marginTop: step.mt,
               }}>
-              <div style={{
-                width:52,height:52,borderRadius:16,margin:'0 auto 16px',
-                background:p.color+'18',border:`1px solid ${p.color}33`,
-                display:'flex',alignItems:'center',justifyContent:'center',
-              }}>
-                <Cpu size={22} color={p.color}/>
+              <div style={{ width: 48, height: 48, borderRadius: 10, marginBottom: 24, background: `${step.color}18`, border: `1px solid ${step.color}33`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 22, color: step.color }}>{step.icon}</span>
               </div>
-              <h3 style={{fontSize:15,fontWeight:700,fontFamily:'"Syne",sans-serif',marginBottom:4}}>{p.name}</h3>
-              <p style={{fontSize:11,color:'rgba(255,255,255,0.35)',marginBottom:12}}>{p.model}</p>
-              <span style={{
-                display:'inline-block',fontSize:10,fontWeight:700,
-                padding:'3px 12px',borderRadius:99,
-                background:p.color+'18',color:p.color,
-                border:`1px solid ${p.color}33`,
-              }}>{p.tag}</span>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: step.color, marginBottom: 8 }}>Step {step.n}</div>
+              <h4 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12, color: C.onSurface }}>{step.title}</h4>
+              <p style={{ fontSize: 14, color: 'rgba(228,225,233,0.5)', lineHeight: 1.65, margin: 0 }}>{step.body}</p>
             </motion.div>
           ))}
         </div>
       </section>
 
-      {/* ── Features ── */}
-      <section style={{padding:'80px clamp(16px,6vw,80px)',maxWidth:1100,margin:'0 auto'}}>
-        <SectionHead tag="Features" title="Built for serious AI users" sub="Every detail designed for developers, writers, and teams who work with AI every day."/>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(240px,1fr))',gap:20}}>
-          {[
-            { title:'Smart prompt engine', body:'Five battle-tested strategies transform rough ideas into precision-crafted prompts tuned for each domain.', Icon:Zap, color:TOKEN.forge },
-            { title:'Real-time streaming', body:'Watch AI responses appear token by token. Cancel mid-generation, refine your prompt, stream again — instantly.', Icon:MessageSquare, color:'#00C896' },
-            { title:'Prompt refinement', body:'Click Refine and the AI asks you clarifying questions first — so the output fits exactly what you had in mind.', Icon:Search, color:'#3B9EFF' },
-            { title:'Template marketplace', body:'24+ ready-to-use prompts across all categories. Start with free templates, unlock advanced ones with Pro.', Icon:Star, color:TOKEN.gold },
-            { title:'Conversation history', body:'Every prompt and response is saved. Revisit, fork, and build on your best work anytime.', Icon:MessageSquare, color:'#A855F7' },
-            { title:'Multi-provider switching', body:'Your prompts are never locked to one AI. Switch providers mid-session to find the best result for any task.', Icon:Cpu, color:'#FF6B3D' },
-          ].map((f,i)=>(
-            <motion.div key={f.title}
-              initial={{opacity:0,y:24}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:i*0.08}}
-              style={{
-                background:'rgba(255,255,255,0.025)',
-                border:'1px solid rgba(255,255,255,0.07)',
-                borderRadius:16,padding:'28px 24px',
-                transition:'border-color 0.25s, transform 0.25s',
-              }}
-              whileHover={{y:-6,borderColor:`${f.color}44`}}>
-              <div style={{
-                width:48,height:48,borderRadius:14,marginBottom:18,
-                background:f.color+'18',border:`1px solid ${f.color}33`,
-                display:'flex',alignItems:'center',justifyContent:'center',
-              }}>
-                <f.Icon size={22} color={f.color}/>
-              </div>
-              <h3 style={{fontSize:15,fontWeight:700,marginBottom:10,fontFamily:'"Syne",sans-serif'}}>{f.title}</h3>
-              <p style={{fontSize:13,color:'rgba(255,255,255,0.4)',lineHeight:1.7}}>{f.body}</p>
-            </motion.div>
-          ))}
+      {/* ── Providers ── */}
+      <section style={{ padding: '80px clamp(16px,4vw,48px)', background: 'rgba(14,14,19,0.5)', borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto' }}>
+          <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} style={{ textAlign: 'center', marginBottom: 48 }}>
+            <h2 className="syne" style={{ fontSize: 'clamp(28px,4vw,44px)', fontWeight: 700, marginBottom: 16 }}>
+              Five <span style={{ color: C.forge }}>AI Providers</span>
+            </h2>
+            <p style={{ color: 'rgba(228,225,233,0.5)', maxWidth: 520, margin: '0 auto', fontSize: 16, lineHeight: 1.65 }}>
+              Every provider is available to every user. Switch mid-session. We tune the prompt syntax for each model automatically.
+            </p>
+          </motion.div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 16 }}>
+            {PROVIDERS.map((p, i) => (
+              <motion.div key={p.name}
+                initial={{ opacity: 0, scale: 0.92 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }}
+                className="glass"
+                style={{ borderRadius: 16, padding: '28px 20px', textAlign: 'center', transition: 'all .25s' }}
+                whileHover={{ y: -6, borderColor: `${p.color}44` }}>
+                <div style={{ width: 52, height: 52, borderRadius: 16, margin: '0 auto 16px', background: `${p.color}18`, border: `1px solid ${p.color}33`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 22, color: p.color }}>memory</span>
+                </div>
+                <h3 className="syne" style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>{p.name}</h3>
+                <p style={{ fontSize: 11, color: 'rgba(228,225,233,0.35)', marginBottom: 8 }}>{p.model}</p>
+                <span style={{ display: 'inline-block', fontSize: 10, fontWeight: 700, padding: '3px 12px', borderRadius: 99, background: `${p.color}18`, color: p.color, border: `1px solid ${p.color}33`, marginBottom: 8 }}>{p.tag}</span>
+                <p style={{ fontSize: 11, color: 'rgba(228,225,233,0.4)', margin: 0 }}>{p.cost} / generation</p>
+              </motion.div>
+            ))}
+          </div>
         </div>
       </section>
 
       {/* ── Pricing ── */}
-      <section id="pricing" style={{padding:'80px clamp(16px,6vw,80px)',maxWidth:1000,margin:'0 auto'}}>
-        <SectionHead tag="Pricing" title="Simple, honest pricing" sub="Start free. Upgrade when you need more power. No hidden fees."/>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(270px,1fr))',gap:20}}>
-          {PLANS.map((p,i)=>(
-            <motion.div key={p.name} className="plan-card"
-              initial={{opacity:0,y:28}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:i*0.1}}
-              style={{
-                background: p.hot ? 'rgba(255,77,28,0.06)' : 'rgba(255,255,255,0.025)',
-                border: p.hot ? `1px solid ${TOKEN.forge}55` : '1px solid rgba(255,255,255,0.07)',
-                borderRadius:20,padding:'32px 28px',display:'flex',flexDirection:'column',
-                position:'relative',overflow:'hidden',
-              }}>
-              {p.hot && (
-                <div style={{
-                  position:'absolute',top:0,left:0,right:0,height:2,
-                  background:`linear-gradient(90deg,${TOKEN.forge},${TOKEN.gold})`,
-                }}/>
-              )}
-              {p.hot && (
-                <div style={{
-                  display:'inline-flex',alignItems:'center',gap:5,
-                  fontSize:10,fontWeight:700,color:TOKEN.forge,
-                  background:TOKEN.forgeGlow,border:`1px solid ${TOKEN.forge}33`,
-                  borderRadius:99,padding:'4px 12px',marginBottom:16,alignSelf:'flex-start',
-                  textTransform:'uppercase',letterSpacing:'0.08em',
+      <section id="pricing" style={{ padding: '96px clamp(16px,4vw,48px)', background: 'rgba(27,27,32,0.3)' }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto' }}>
+          <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} style={{ textAlign: 'center', marginBottom: 64 }}>
+            <h2 className="syne" style={{ fontSize: 'clamp(28px,4vw,44px)', fontWeight: 700, marginBottom: 16 }}>
+              Choose Your <span style={{ color: C.forge }}>Intensity</span>
+            </h2>
+            <p style={{ color: 'rgba(228,225,233,0.5)', fontSize: 16, maxWidth: 480, margin: '0 auto' }}>
+              Pay only for what you use. No subscriptions, no monthly lock-in. Buy credits, forge prompts.
+            </p>
+          </motion.div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 32, alignItems: 'start' }}>
+            {PACKS.map((pack, i) => (
+              <motion.div key={pack.id}
+                initial={{ opacity: 0, y: 28 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}
+                style={{
+                  background: pack.hot ? 'rgba(255,77,28,0.02)' : 'rgba(19,19,24,0.7)',
+                  backdropFilter: 'blur(12px)',
+                  border: pack.hot ? `1px solid rgba(255,77,28,0.5)` : '1px solid rgba(255,77,28,0.1)',
+                  borderRadius: 24, padding: 40,
+                  display: 'flex', flexDirection: 'column',
+                  position: 'relative',
+                  transform: pack.hot ? 'scale(1.05)' : 'scale(1)',
+                  boxShadow: pack.hot ? `0 0 40px -10px ${C.forgeGlow}` : 'none',
+                  zIndex: pack.hot ? 10 : 1,
+                  outline: pack.hot ? `1px solid rgba(255,77,28,0.2)` : 'none',
                 }}>
-                  <Star size={9}/> Most popular
+                {pack.hot && (
+                  <div style={{
+                    position: 'absolute', top: -16, left: '50%', transform: 'translateX(-50%)',
+                    background: C.forge, color: '#fff', padding: '4px 16px', borderRadius: 9999,
+                    fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', whiteSpace: 'nowrap',
+                  }}>MOST POPULAR</div>
+                )}
+
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: pack.hot ? C.forge : 'rgba(228,225,233,0.5)', marginBottom: 16 }}>{pack.name}</div>
+
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 8 }}>
+                  <span className="syne" style={{ fontSize: 40, fontWeight: 700 }}>{pack.price}</span>
                 </div>
-              )}
-              <h3 style={{fontSize:18,fontWeight:700,fontFamily:'"Syne",sans-serif',marginBottom:8}}>{p.name}</h3>
-              <div style={{marginBottom:24}}>
-                <span style={{
-                  fontSize:42,fontWeight:800,fontFamily:'"Syne",sans-serif',
-                  background:`linear-gradient(135deg,${TOKEN.forge},${TOKEN.gold})`,
-                  WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',
-                }}>{p.price}</span>
-                <span style={{fontSize:14,color:'rgba(255,255,255,0.35)',marginLeft:4}}>/mo</span>
-              </div>
-              <ul style={{listStyle:'none',flex:1,marginBottom:28,display:'flex',flexDirection:'column',gap:12}}>
-                {p.features.map(f=>(
-                  <li key={f} style={{display:'flex',alignItems:'center',gap:10,fontSize:13,color:'rgba(255,255,255,0.6)'}}>
-                    <Check size={14} color={TOKEN.forge} style={{flexShrink:0}}/>
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <Link to={p.to} style={{
-                display:'block',textAlign:'center',padding:'13px 0',borderRadius:99,
-                background: p.hot ? `linear-gradient(135deg,${TOKEN.forge},${TOKEN.ember})` : 'rgba(255,255,255,0.07)',
-                border: p.hot ? 'none' : '1px solid rgba(255,255,255,0.12)',
-                color:'#fff',fontSize:13,fontWeight:700,textDecoration:'none',
-                boxShadow: p.hot ? `0 4px 24px ${TOKEN.forgeGlow}` : 'none',
-                transition:'opacity 0.2s',
-              }}
-              onMouseEnter={e=>e.target.style.opacity='0.85'} onMouseLeave={e=>e.target.style.opacity='1'}>
-                {p.name==='Free' ? 'Get started free' : 'Subscribe now'} <ArrowUpRight size={12} style={{display:'inline',verticalAlign:'middle'}}/>
+                <div style={{ fontSize: 13, color: 'rgba(228,225,233,0.4)', marginBottom: 32 }}>
+                  {pack.credits}{pack.bonus > 0 ? ` + ${pack.bonus} bonus` : ''} credits · {pack.perCredit}/credit
+                </div>
+
+                <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 40px', display: 'flex', flexDirection: 'column', gap: 16, flex: 1 }}>
+                  {pack.features.map(f => (
+                    <li key={f} style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 14, color: C.onSurface }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 16, color: pack.checkColor }}>check</span>
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+
+                <Link to={pack.to} style={{
+                  display: 'block', textAlign: 'center', padding: '16px 0', borderRadius: 12,
+                  background: pack.hot ? C.forge : 'transparent',
+                  border: pack.hot ? 'none' : '1px solid rgba(255,255,255,0.1)',
+                  color: '#fff', fontSize: 14, fontWeight: 700, textDecoration: 'none',
+                  boxShadow: pack.hot ? `0 4px 24px rgba(255,77,28,0.2)` : 'none',
+                  transition: 'filter .2s, background .2s',
+                }}
+                  onMouseEnter={e => { if (pack.hot) e.target.style.filter = 'brightness(1.1)'; else e.target.style.background = 'rgba(255,255,255,0.05)'; }}
+                  onMouseLeave={e => { if (pack.hot) e.target.style.filter = 'brightness(1)'; else e.target.style.background = 'transparent'; }}>
+                  {pack.cta}
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Enterprise note */}
+          <motion.div initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+            style={{ textAlign: 'center', marginTop: 48 }}>
+            <p style={{ color: 'rgba(228,225,233,0.4)', fontSize: 14 }}>
+              Need more?{' '}
+              <Link to="/register" style={{ color: C.forge, textDecoration: 'none', fontWeight: 600 }}>
+                Enterprise Pack — 600 + 150 bonus credits for ₹299
               </Link>
-            </motion.div>
-          ))}
+            </p>
+          </motion.div>
         </div>
       </section>
 
-      {/* ── CTA ── */}
-      <section style={{padding:'80px clamp(16px,6vw,80px) 100px',textAlign:'center',position:'relative',overflow:'hidden'}}>
-        <Embers count={10}/>
-        <div style={{
-          position:'absolute',inset:0,
-          background:`radial-gradient(ellipse at center, ${TOKEN.forge}10 0%, transparent 65%)`,
-          pointerEvents:'none',
-        }}/>
-        <motion.div initial={{opacity:0,scale:0.96}} whileInView={{opacity:1,scale:1}} viewport={{once:true}}
-          style={{
-            maxWidth:660,margin:'0 auto',
-            background:'rgba(255,255,255,0.025)',
-            border:`1px solid ${TOKEN.forge}25`,
-            borderRadius:28,padding:'60px 48px',
-            backdropFilter:'blur(12px)',
-            position:'relative',
-          }}>
-          <div style={{
-            position:'absolute',top:0,left:'20%',right:'20%',height:1,
-            background:`linear-gradient(90deg,transparent,${TOKEN.forge}66,transparent)`,
-          }}/>
-          <h2 style={{fontSize:'clamp(28px,4vw,48px)',fontWeight:800,lineHeight:1.1,fontFamily:'"Syne",sans-serif',marginBottom:16}}>
-            Ready to <span className="forge-grad">forge</span><br/>better prompts?
-          </h2>
-          <p style={{fontSize:16,color:'rgba(255,255,255,0.4)',marginBottom:36,lineHeight:1.65}}>
-            Join thousands of users who stopped guessing and started getting better AI results — in seconds.
-          </p>
-          <div style={{display:'flex',gap:14,justifyContent:'center',flexWrap:'wrap'}}>
-            <Link to="/register" style={{
-              display:'inline-flex',alignItems:'center',gap:8,
-              padding:'14px 32px',borderRadius:99,
-              background:`linear-gradient(135deg,${TOKEN.forge},${TOKEN.ember})`,
-              color:'#fff',fontSize:15,fontWeight:700,textDecoration:'none',
-              boxShadow:`0 8px 32px ${TOKEN.forgeGlow}`,
-            }}>
-              Get started — it's free <ArrowRight size={15}/>
-            </Link>
-            <Link to="/templates" style={{
-              display:'inline-flex',alignItems:'center',gap:8,
-              padding:'14px 32px',borderRadius:99,
-              background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',
-              color:'rgba(255,255,255,0.7)',fontSize:15,fontWeight:600,textDecoration:'none',
-            }}>
-              Browse templates
-            </Link>
-          </div>
-        </motion.div>
-      </section>
-
       {/* ── Footer ── */}
-      <footer style={{
-        borderTop:'1px solid rgba(255,255,255,0.06)',
-        padding:'40px clamp(16px,6vw,80px)',
-      }}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:24,marginBottom:24}}>
-          <span style={{
-            fontSize:18,fontWeight:800,fontFamily:'"Syne",sans-serif',
-            background:`linear-gradient(90deg,${TOKEN.forge},${TOKEN.gold})`,
-            WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',
-          }}>NexPrompt</span>
-          <div style={{display:'flex',gap:24,flexWrap:'wrap'}}>
-            {[['Sign in','/login'],['Get started','/register'],['Templates','/templates']].map(([label,to])=>(
-              <Link key={to} to={to} style={{fontSize:12,color:'rgba(255,255,255,0.3)',textDecoration:'none',transition:'color 0.15s'}}
-                onMouseEnter={e=>e.target.style.color='rgba(255,255,255,0.7)'} onMouseLeave={e=>e.target.style.color='rgba(255,255,255,0.3)'}>
+      <footer style={{ padding: '40px clamp(16px,4vw,48px)', background: C.bg, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 32 }}>
+          <div>
+            <span className="syne" style={{ fontSize: 18, fontWeight: 800, color: C.onSurface }}>NexPrompt</span>
+            <p style={{ fontSize: 10, color: 'rgba(228,225,233,0.4)', marginTop: 4, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+              © 2024 NexPrompt. All rights reserved.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', gap: 32 }}>
+            {[['Privacy', '/privacy'], ['Terms', '/terms'], ['Docs', '#'], ['API', '#']].map(([label, to]) => (
+              <Link key={label} to={to} style={{ color: 'rgba(228,225,233,0.5)', fontSize: 11, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', textDecoration: 'none', transition: 'color .15s' }}
+                onMouseEnter={e => e.target.style.color = C.forge}
+                onMouseLeave={e => e.target.style.color = 'rgba(228,225,233,0.5)'}>
                 {label}
               </Link>
             ))}
           </div>
-        </div>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:16,paddingTop:24,borderTop:'1px solid rgba(255,255,255,0.04)'}}>
-          <p style={{fontSize:12,color:'rgba(255,255,255,0.25)'}}>© 2026 NexPrompt. Craft perfect prompts with AI.</p>
-          <div style={{display:'flex',gap:20}}>
-            {[['Terms & Conditions','/terms'],['Privacy Policy','/privacy']].map(([label,to])=>(
-              <Link key={to} to={to} style={{fontSize:11,color:'rgba(255,255,255,0.25)',textDecoration:'none',transition:'color 0.15s'}}
-                onMouseEnter={e=>e.target.style.color='rgba(255,255,255,0.5)'} onMouseLeave={e=>e.target.style.color='rgba(255,255,255,0.25)'}>
-                {label}
-              </Link>
+
+          <div style={{ display: 'flex', gap: 16 }}>
+            {['alternate_email', 'language'].map(icon => (
+              <div key={icon} style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all .2s' }}
+                onMouseEnter={e => { e.currentTarget.style.background = C.forge; e.currentTarget.style.borderColor = C.forge; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 14, color: C.onSurface }}>{icon}</span>
+              </div>
             ))}
           </div>
         </div>
       </footer>
+
     </div>
   );
 }

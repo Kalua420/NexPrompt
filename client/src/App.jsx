@@ -1,5 +1,6 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
 const Landing = lazy(() => import('./pages/Landing/Landing.jsx'));
 const Login = lazy(() => import('./pages/Auth/Login.jsx'));
@@ -12,6 +13,7 @@ const Workspace = lazy(() => import('./pages/Workspace/Workspace.jsx'));
 const Templates = lazy(() => import('./pages/Templates/Templates.jsx'));
 const Favorites = lazy(() => import('./pages/Favorites/Favorites.jsx'));
 const Settings = lazy(() => import('./pages/Settings/Settings.jsx'));
+const Profile = lazy(() => import('./pages/Profile/Profile.jsx'));
 const Credits = lazy(() => import('./pages/Credits/Credits.jsx'));
 const Subscription = lazy(() => import('./pages/Subscription/Subscription.jsx'));
 const AdminLogin = lazy(() => import('./pages/Admin/Login.jsx'));
@@ -21,28 +23,31 @@ const Privacy = lazy(() => import('./pages/Legal/Privacy.jsx'));
 
 export default function App() {
   return (
-    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <Suspense fallback={<div className="flex items-center justify-center h-screen bg-bg text-text">Loading...</div>}>
-        <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/verify-email" element={<VerifyEmail />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/workspace" element={<Workspace />} />
-          <Route path="/templates" element={<Templates />} />
-          <Route path="/favorites" element={<Favorites />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/credits" element={<Credits />} />
-          <Route path="/subscription" element={<Subscription />} />
-          <Route path="/admin/login" element={<AdminLogin />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/legal/terms" element={<Terms />} />
-          <Route path="/legal/privacy" element={<Privacy />} />
-        </Routes>
-      </Suspense>
-    </BrowserRouter>
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || ''}>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <Suspense fallback={<div className="flex items-center justify-center h-screen bg-bg text-text">Loading...</div>}>
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/workspace" element={<Workspace />} />
+            <Route path="/templates" element={<Templates />} />
+            <Route path="/favorites" element={<Favorites />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/credits" element={<Credits />} />
+            <Route path="/subscription" element={<Subscription />} />
+            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route path="/legal/terms" element={<Terms />} />
+            <Route path="/legal/privacy" element={<Privacy />} />
+          </Routes>
+        </Suspense>
+      </BrowserRouter>
+    </GoogleOAuthProvider>
   );
 }

@@ -7,13 +7,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  user
+  admin
+}
+
 model User {
   id           String            @id @default(cuid())
   name         String
   email        String            @unique
-  passwordHash String
+  passwordHash String?
+  googleId     String?           @unique
   avatar       String?           @db.Text
-  role         String            @default("user")
+  role         Role              @default(user)
   termsAcceptedAt DateTime?
   privacyAcceptedAt DateTime?
   resetToken   String?           @unique
@@ -21,75 +27,127 @@ model User {
   emailVerified Boolean          @default(false)
   verificationToken String?      @unique
   createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  deletedAt    DateTime?
   conversations Conversation[]
   prompts      Prompt[]
   favorites    Favorite[]
   payments     Payment[]
   creditBalance CreditBalance?
+  creditTransactions CreditTransaction[]
+  apiKeyUsageLogs ApiKeyUsageLog[]
 }
 
 model Conversation {
   id        String   @id @default(cuid())
-  title     String   @default("New Conversation")
+  title     String   @default("New Conversation") @db.VarChar(500)
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   prompts   Prompt[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+  
+  @@index([userId, updatedAt])
+  @@index([deletedAt])
+}
+
+enum UseCase {
+  chatbot
+  coding
+  writing
+  image
+  research
 }
 
 model Prompt {
   id             String       @id @default(cuid())
-  title          String       @db.Text
+  title          String       @db.VarChar(500)
   content        String       @db.Text
-  useCase        String
-  provider       String
-  tokensUsed     Int?
+  useCase        UseCase
   userId         String
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   conversationId String?
   conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
   createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  deletedAt      DateTime?
   favorites      Favorite[]
   generations    Generation[]
+  creditTransactions CreditTransaction[]
+  apiKeyUsageLogs ApiKeyUsageLog[]
+  
+  @@index([userId, createdAt])
+  @@index([conversationId])
+  @@index([deletedAt])
+  @@index([title(length: 255)])
+  @@index([useCase])
 }
 
 model Generation {
   id        String   @id @default(cuid())
-  content   String   @db.Text
+  content   String   @db.MediumText
   tokensUsed Int?
-  provider  String?
-  apiKeyId  String?  // Track which API key was used
   promptId  String
   prompt    Prompt   @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  provider  String
+  apiKeyId  String?
+  apiKey    ApiKey?  @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  apiKeyUsageLogs ApiKeyUsageLog[]
   
+  @@index([promptId])
   @@index([apiKeyId, createdAt])
   @@index([provider, createdAt])
 }
 
+enum TemplatePlan {
+  free
+  pro
+  team
+}
+
 model Template {
   id              String   @id @default(cuid())
-  title           String   @db.Text
+  title           String   @db.VarChar(500)
   description     String   @db.Text
   category        String
   content         String   @db.Text
-  plan            String   @default("free")
+  plan            TemplatePlan @default(free)
   featured        Boolean  @default(false)
-  minCreditsRequired Int   @default(0)  // Minimum credits user must have to access
-  recommendedFor  String?  // Recommended credit pack: starter, standard, premium, enterprise
-  providers       String?  // Comma-separated list of recommended providers
-  useCase         String?  // Associated use case: coding, writing, chatbot, research, image, video
+  minCreditsRequired Int   @default(0)
+  providers       Json?    @db.Json
+  recommendedFor  Json?    @db.Json
+  useCase         UseCase?
   createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
+  
+  @@index([category, featured])
+  @@index([deletedAt])
+  @@index([title(length: 255)])
+  @@index([useCase])
 }
 
 model Favorite {
-  id        String @id @default(cuid())
+  id        String   @id @default(cuid())
   userId    String
   promptId  String
-  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  prompt    Prompt @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prompt    Prompt   @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  
   @@unique([userId, promptId])
+  @@index([userId])
+  @@index([promptId])
+}
+
+enum PaymentStatus {
+  pending
+  completed
+  failed
+  refunded
 }
 
 model Payment {
@@ -98,18 +156,19 @@ model Payment {
   user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   amount            Int
   currency          String      @default("INR")
-  status            String      // pending, completed, failed, refunded
+  status            PaymentStatus @default(pending)
   razorpayOrderId   String      @unique
   razorpayPaymentId String?     @unique
-  signature         String?
   creditPackId      String?
-  creditPack        CreditPack? @relation(fields: [creditPackId], references: [id])
+  creditPack        CreditPack? @relation(fields: [creditPackId], references: [id], onDelete: SetNull)
   creditsGranted    Int?
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
+  creditTransactions CreditTransaction[]
   
   @@index([userId, createdAt])
   @@index([status])
+  @@index([creditPackId])
 }
 
 model CreditBalance {
@@ -117,21 +176,37 @@ model CreditBalance {
   userId    String   @unique
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   credits   Int      @default(0)
-  updatedAt DateTime @updatedAt
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum TransactionType {
+  bonus
+  purchase
+  usage
+  refund
+  adjustment
 }
 
 model CreditTransaction {
   id          String   @id @default(cuid())
   userId      String
-  type        String   // purchase, usage, refund, bonus, expiry
-  amount      Int      // positive for additions, negative for deductions
-  balance     Int      // balance after this transaction
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        TransactionType
+  amount      Int
   description String   @db.Text
-  metadata    String?  @db.Text // JSON: {"promptId": "...", "provider": "...", "packId": "..."}
+  metadata    Json?    @db.Json
+  paymentId   String?
+  payment     Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  promptId    String?
+  prompt      Prompt?  @relation(fields: [promptId], references: [id], onDelete: SetNull)
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   
   @@index([userId, createdAt])
+  @@index([type])
+  @@index([paymentId])
+  @@index([promptId])
 }
 
 model CreditPack {
@@ -139,27 +214,33 @@ model CreditPack {
   name          String
   credits       Int
   bonusCredits  Int       @default(0)
-  priceInPaise  Int       // e.g. 9900 for ₹99
+  priceInPaise  Int
   isActive      Boolean   @default(true)
   displayOrder  Int       @default(0)
   popular       Boolean   @default(false)
   createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
   payments      Payment[]
+  
+  @@index([deletedAt])
 }
 
 model ApiKey {
   id          String   @id @default(cuid())
-  provider    String   // groq, sambanova, anthropic, opencode, gemini
+  provider    String
   apiKey      String   @db.Text
-  label       String?  // Optional label for identification (e.g., "Production Key 1")
+  label       String?
   isActive    Boolean  @default(true)
-  priority    Int      @default(0) // Higher priority keys are tried first
+  priority    Int      @default(0)
   lastUsedAt  DateTime?
-  failCount   Int      @default(0) // Track consecutive failures
+  failCount   Int      @default(0)
   lastFailAt  DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   failureLogs ApiKeyFailureLog[]
+  usageLogs   ApiKeyUsageLog[]
+  generations Generation[]
   
   @@index([provider, isActive, priority])
   @@index([provider, failCount])
@@ -169,8 +250,8 @@ model ApiKeyFailureLog {
   id         String   @id @default(cuid())
   apiKeyId   String
   apiKey     ApiKey   @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
-  provider   String   // denormalized for fast queries
-  errorCode  String?  // HTTP status code or error type (e.g. "401", "ECONNREFUSED")
+  provider   String
+  errorCode  String?
   errorMsg   String?  @db.Text
   createdAt  DateTime @default(now())
 
@@ -180,19 +261,26 @@ model ApiKeyFailureLog {
 
 model ApiKeyUsageLog {
   id           String   @id @default(cuid())
-  apiKeyId     String   // API key that was used
-  provider     String   // denormalized for fast queries
-  userId       String   // User who made the request
-  promptId     String?  // Associated prompt (if applicable)
-  generationId String?  // Associated generation (if applicable)
-  useCase      String?  // coding, writing, chatbot, etc.
-  tokensUsed   Int?     // Tokens consumed in this request
-  success      Boolean  @default(true) // Whether the request succeeded
-  errorMsg     String?  @db.Text // Error message if failed
+  apiKeyId     String
+  apiKey       ApiKey   @relation(fields: [apiKeyId], references: [id], onDelete: Restrict)
+  provider     String
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  promptId     String?
+  prompt       Prompt?  @relation(fields: [promptId], references: [id], onDelete: SetNull)
+  generationId String?
+  generation   Generation? @relation(fields: [generationId], references: [id], onDelete: SetNull)
+  useCase      UseCase?
+  tokensUsed   Int?
+  success      Boolean  @default(true)
+  errorMsg     String?  @db.Text
   createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
   
   @@index([apiKeyId, createdAt])
   @@index([provider, createdAt])
   @@index([userId, createdAt])
   @@index([success, createdAt])
+  @@index([promptId])
+  @@index([generationId, createdAt])
 }

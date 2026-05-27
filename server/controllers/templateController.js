@@ -45,13 +45,13 @@ export async function getTemplates(req, res) {
       
       // Get templates grouped by tier
       if (tier === 'true') {
-        const templates = await getTemplatesByTier(userId, { category, search, featured, plan });
+        const templates = await getTemplatesByTier(userId, { category, search, featured, plan, useCase });
         return res.json(templates);
       }
       
       // Get recommended templates
       if (featured === 'true') {
-        const templates = await getRecommendedTemplates(userId, { category });
+        const templates = await getRecommendedTemplates(userId, { category, useCase });
         return res.json(templates);
       }
       
@@ -61,22 +61,17 @@ export async function getTemplates(req, res) {
         return res.json(templates);
       }
       
-      // Get templates by use case
-      if (useCase) {
-        const templates = await getTemplatesByUseCase(useCase, userId);
-        return res.json(templates);
-      }
-      
-      // Default: get all templates filtered by credits, with optional plan filter
-      const templates = await getTemplatesByCredits(userId, { category, search, featured, plan });
+      // Default: get all templates filtered by credits, with optional plan/useCase filter
+      const templates = await getTemplatesByCredits(userId, { category, search, featured, plan, useCase });
       return res.json(templates);
     }
     
     // If user is not authenticated, return all templates without credit filtering
     const where = {};
-    if (category) where.category = category;
+    if (category && category !== 'All') where.category = category;
+    if (useCase) where.useCase = useCase;
     if (featured) where.featured = true;
-    if (search) where.title = { contains: search };
+    if (search) where.title = { contains: search, mode: 'insensitive' };
     if (plan) where.plan = plan;
     
     const templates = await prisma.template.findMany({
@@ -87,7 +82,7 @@ export async function getTemplates(req, res) {
     res.json(templates.map(t => ({
       ...t,
       canUse: false,
-      providers: t.providers ? t.providers.split(',').map(p => p.trim()) : [],
+      providers: Array.isArray(t.providers) ? t.providers : [],
     })));
   } catch (err) {
     console.error('Get templates error:', err);
@@ -155,7 +150,7 @@ export async function createTemplate(req, res) {
     
     res.status(201).json({
       ...template,
-      providers: template.providers ? template.providers.split(',').map(p => p.trim()) : [],
+      providers: Array.isArray(template.providers) ? template.providers : [],
     });
   } catch (err) {
     console.error('Create template error:', err);

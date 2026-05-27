@@ -1,10 +1,11 @@
 import { Router } from 'express';
-import { register, login, me, refreshToken, forgotPassword, resetPassword, getProviders, updateProfile, verifyEmail, resendVerification } from '../controllers/authController.js';
+import { register, login, me, refreshToken, forgotPassword, resetPassword, getProviders, updateProfile, verifyEmail, resendVerification, googleAuth } from '../controllers/authController.js';
 import { authenticate } from '../middleware/auth.js';
 
 const router = Router();
 router.post('/register', register);
 router.post('/login', login);
+router.post('/google', googleAuth);
 router.post('/verify-email', verifyEmail);
 router.post('/resend-verification', resendVerification);
 router.post('/refresh', refreshToken);

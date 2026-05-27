@@ -54,7 +54,7 @@ export default function Templates() {
   const fetchTemplates = useCallback((searchValue, cat, planLabel) => {
     const planValue = planFilterOptions.find((p) => p.label === planLabel)?.value ?? '';
     const params = {};
-    if (cat !== 'All') params.category = cat;
+    if (cat !== 'All') params.useCase = cat;
     if (searchValue) params.search = searchValue;
     if (planValue) params.plan = planValue;
 

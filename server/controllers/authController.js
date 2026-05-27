@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import { OAuth2Client } from 'google-auth-library';
 import { prisma } from '../src/index.js';
 import { generateAccessToken, generateRefreshToken } from '../utils/tokens.js';
 import {
@@ -11,6 +12,8 @@ import {
 } from '../services/emailService.js';
 import { getOrCreateCreditBalance, addCredits } from '../services/creditService.js';
 import { getAvailableProviders } from '../services/apiKeyService.js';
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const SIGNUP_BONUS_CREDITS = 5;
 
@@ -145,7 +148,9 @@ export async function login(req, res) {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
   const user = await prisma.user.findUnique({ where: { email } });
-  if (!user || !(await bcrypt.compare(password, user.passwordHash))) return res.status(401).json({ error: 'Invalid credentials' });
+  if (!user || !user.passwordHash || !(await bcrypt.compare(password, user.passwordHash))) {
+    return res.status(401).json({ error: 'Invalid credentials' });
+  }
 
   // Block unverified accounts
   if (!user.emailVerified) {
@@ -161,6 +166,7 @@ export async function login(req, res) {
   res.json({
     user: {
       id: user.id, name: user.name, email: user.email, avatar: user.avatar, role: user.role,
+      googleId: user.googleId || null, hasPassword: !!user.passwordHash,
       plan: 'free',
     },
     accessToken,
@@ -171,10 +177,11 @@ export async function login(req, res) {
 export async function me(req, res) {
   const user = await prisma.user.findUnique({
     where: { id: req.user.userId },
-    select: { id: true, name: true, email: true, avatar: true, role: true, createdAt: true },
+    select: { id: true, name: true, email: true, avatar: true, role: true, createdAt: true, googleId: true, passwordHash: true },
   });
   if (!user) return res.status(404).json({ error: 'User not found' });
-  res.json({ ...user, plan: 'free' });
+  // Expose whether the account has a password and is Google-linked, without leaking the hash
+  res.json({ ...user, passwordHash: undefined, hasPassword: !!user.passwordHash, plan: 'free' });
 }
 
 export async function refreshToken(req, res) {
@@ -315,6 +322,9 @@ export async function updateProfile(req, res) {
       if (!currentPassword) {
         return res.status(400).json({ error: 'Current password is required to set a new password' });
       }
+      if (!user.passwordHash) {
+        return res.status(400).json({ error: 'This account uses Google sign-in. Set a password via forgot-password.' });
+      }
       const valid = await bcrypt.compare(currentPassword, user.passwordHash);
       if (!valid) {
         return res.status(400).json({ error: 'Current password is incorrect' });
@@ -339,4 +349,118 @@ export async function updateProfile(req, res) {
     console.error('Error updating profile:', error);
     res.status(500).json({ error: 'Failed to update profile' });
   }
+}
+
+export async function googleAuth(req, res) {
+  const { credential } = req.body;
+  if (!credential) return res.status(400).json({ error: 'Google credential required' });
+
+  if (!process.env.GOOGLE_CLIENT_ID) {
+    return res.status(503).json({ error: 'Google sign-in is not configured on this server' });
+  }
+
+  // credential may be either:
+  //   - an OAuth2 access_token (from useGoogleLogin implicit flow) — fetch userinfo
+  //   - a JWT id_token (from GoogleLogin one-tap) — verify directly
+  //   Access tokens start with "ya29." or are short; id_tokens are 3-part JWTs (contain two dots)
+  let googleId, email, name, picture;
+
+  const isIdToken = credential.split('.').length === 3 && !credential.startsWith('ya29.');
+
+  if (!isIdToken) {
+    // OAuth2 access token — fetch profile from Google userinfo endpoint
+    try {
+      const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${credential}` },
+      });
+      if (!r.ok) throw new Error(`Userinfo request failed: ${r.status}`);
+      const info = await r.json();
+      googleId = info.sub;
+      email    = info.email;
+      name     = info.name;
+      picture  = info.picture;
+    } catch {
+      return res.status(401).json({ error: 'Invalid Google access token' });
+    }
+  } else {
+    // JWT id_token — verify with google-auth-library
+    try {
+      const ticket = await googleClient.verifyIdToken({
+        idToken: credential,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+      const p = ticket.getPayload();
+      googleId = p.sub;
+      email    = p.email;
+      name     = p.name;
+      picture  = p.picture;
+    } catch {
+      return res.status(401).json({ error: 'Invalid Google credential' });
+    }
+  }
+
+  if (!email) return res.status(400).json({ error: 'Google account has no email address' });
+
+  // 1. Try to find by googleId first (returning user)
+  let user = await prisma.user.findUnique({ where: { googleId } });
+
+  if (!user) {
+    // 2. Try to find by email — link existing account
+    user = await prisma.user.findUnique({ where: { email } });
+
+    if (user) {
+      // Link Google to the existing email/password account
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          googleId,
+          emailVerified: true,
+          // Only update avatar if the user hasn't set one
+          ...(user.avatar ? {} : { avatar: picture || null }),
+        },
+      });
+    } else {
+      // 3. New user — create account (no password, email pre-verified)
+      user = await prisma.user.create({
+        data: {
+          name: name || email.split('@')[0],
+          email,
+          googleId,
+          avatar: picture || null,
+          emailVerified: true,
+          termsAcceptedAt: new Date(),
+          privacyAcceptedAt: new Date(),
+        },
+      });
+
+      // Grant signup bonus credits
+      await getOrCreateCreditBalance(user.id);
+      const balance = await addCredits(user.id, SIGNUP_BONUS_CREDITS, 'bonus', 'Welcome bonus — Google sign-in');
+
+      // Send welcome email (non-blocking)
+      sendWelcomeEmail(user, balance).catch((err) =>
+        console.error('Failed to send welcome email:', err.message)
+      );
+
+      console.log(`✓ New user registered via Google: ${email}`);
+    }
+  }
+
+  const accessToken = generateAccessToken(user.id);
+  const refreshToken = generateRefreshToken(user.id);
+
+  res.json({
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      avatar: user.avatar,
+      role: user.role,
+      googleId: user.googleId || null,
+      hasPassword: !!user.passwordHash,
+      plan: 'free',
+    },
+    accessToken,
+    refreshToken,
+  });
 }

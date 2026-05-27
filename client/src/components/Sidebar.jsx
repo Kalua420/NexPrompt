@@ -1,19 +1,20 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, Zap, Circle, Star, CreditCard, Settings, Shield, Sparkles, Crown } from 'lucide-react';
+import { LayoutDashboard, Zap, Circle, Star, CreditCard, Settings, Shield, Sparkles, Crown, UserCircle } from 'lucide-react';
 import { useUiStore } from '../stores/uiStore.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useTier } from '../hooks/useTier.js';
 import CreditDisplay from './CreditDisplay';
 
 const links = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/workspace', label: 'Workspace', icon: Zap },
-  { to: '/templates', label: 'Templates', icon: Circle },
-  { to: '/favorites', label: 'Favorites', icon: Star },
+  { to: '/dashboard',    label: 'Dashboard',    icon: LayoutDashboard },
+  { to: '/workspace',    label: 'Workspace',    icon: Zap },
+  { to: '/templates',    label: 'Templates',    icon: Circle },
+  { to: '/favorites',    label: 'Favorites',    icon: Star },
   { to: '/subscription', label: 'Subscription', icon: CreditCard },
-  { to: '/settings', label: 'Settings', icon: Settings },
+  { to: '/profile',      label: 'Profile',      icon: UserCircle },
+  { to: '/settings',     label: 'Settings',     icon: Settings },
 ];
 
 export default function Sidebar() {

@@ -164,6 +164,11 @@ export default function Workspace() {
         return;
       }
 
+      // If we tried to load a conversation but failed (404), clear the stale ID
+      if (convId && !loaded?.data) {
+        localStorage.removeItem('currentConversationId');
+      }
+
       if (list.length > 0) {
         // Always fetch the full detail (list only has lastPrompt, not all prompts)
         api.get(`/api/conversations/${list[0].id}`).then(({ data }) => {

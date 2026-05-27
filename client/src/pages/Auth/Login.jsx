@@ -1,116 +1,144 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { LogIn, Shield, MailCheck } from 'lucide-react';
+import { AnimatePresence } from 'framer-motion';
+import { Eye, EyeOff, Shield, MailCheck } from 'lucide-react';
 import Button from '../../components/Button.jsx';
-import Input from '../../components/Input.jsx';
-import PasswordInput from '../../components/PasswordInput.jsx';
 import ErrorMessage from '../../components/ErrorMessage.jsx';
+import GoogleAuthButton from '../../components/GoogleAuthButton.jsx';
 import { useAuthStore } from '../../stores/authStore.js';
 import api from '../../utils/api.js';
 import { getApiError } from '../../utils/errors.js';
+import AuthLayout from './AuthLayout.jsx';
+
+function IconInput({ icon, type = 'text', value, onChange, placeholder, required, autoComplete, id }) {
+  const [show, setShow] = useState(false);
+  const isPw = type === 'password';
+  return (
+    <div className="auth-input-wrap">
+      <span className="msym auth-input-icon">{icon}</span>
+      <input
+        id={id}
+        className={`auth-input${isPw ? ' auth-input-pw' : ''}`}
+        type={isPw ? (show ? 'text' : 'password') : type}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        required={required}
+        autoComplete={autoComplete}
+      />
+      {isPw && (
+        <button type="button" onClick={() => setShow(s => !s)}
+          style={{ position: 'absolute', right: 12, background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(228,225,233,0.35)', padding: 0, display: 'flex', alignItems: 'center' }}>
+          {show ? <EyeOff size={16} /> : <Eye size={16} />}
+        </button>
+      )}
+    </div>
+  );
+}
 
 export default function Login() {
-  const [email, setEmail] = useState('');
+  const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [error,    setError]    = useState('');
+  const [loading,  setLoading]  = useState(false);
   const [unverifiedEmail, setUnverifiedEmail] = useState('');
-  const login = useAuthStore((s) => s.login);
+  const login    = useAuthStore((s) => s.login);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setUnverifiedEmail('');
-    setLoading(true);
+    setError(''); setUnverifiedEmail(''); setLoading(true);
     try {
       const { data } = await api.post('/api/auth/login', { email, password });
       login(data.user, data.accessToken, data.refreshToken);
       navigate('/dashboard');
     } catch (err) {
       const data = err?.response?.data;
-      if (data?.requiresVerification) {
-        setUnverifiedEmail(data.email || email);
-      } else {
-        setError(getApiError(err, 'Login failed'));
-      }
-    } finally {
-      setLoading(false);
-    }
+      if (data?.requiresVerification) setUnverifiedEmail(data.email || email);
+      else setError(getApiError(err, 'Login failed'));
+    } finally { setLoading(false); }
   };
 
-  // Unverified account banner
+  /* ── Unverified state ── */
   if (unverifiedEmail) {
     return (
-      <div className="min-h-screen bg-bg bg-grid flex items-center justify-center px-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-sm bg-black/20 backdrop-blur-xl border border-border rounded-xl p-8 space-y-5 shadow-2xl text-center"
-        >
-          <MailCheck size={40} className="mx-auto text-primary" />
-          <div>
-            <h1 className="text-xl font-bold">Verify your email first</h1>
-            <p className="text-sm text-text/50 mt-2">
-              Your account hasn't been verified yet. Check your inbox for the verification link we sent to{' '}
-              <strong className="text-text">{unverifiedEmail}</strong>.
-            </p>
+      <AuthLayout heading="Verify your email" subheading="Your account hasn't been activated yet.">
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, textAlign: 'center' }}>
+          <div style={{ width: 56, height: 56, borderRadius: 14, background: 'rgba(79,110,247,0.12)', border: '1px solid rgba(79,110,247,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <MailCheck size={26} style={{ color: '#4f6ef7' }} />
           </div>
-          <Button
-            className="w-full"
-            onClick={() => navigate('/verify-email')}
-          >
+          <p style={{ fontSize: 14, color: 'rgba(228,225,233,0.55)', lineHeight: 1.65, margin: 0 }}>
+            Check your inbox for the verification link sent to{' '}
+            <strong style={{ color: '#e4e1e9' }}>{unverifiedEmail}</strong>.
+          </p>
+          <button className="auth-btn" onClick={() => navigate('/verify-email')}>
             Go to verification page
-          </Button>
-          <button
-            onClick={() => setUnverifiedEmail('')}
-            className="text-sm text-text/40 hover:text-text transition-colors"
-          >
+          </button>
+          <button onClick={() => setUnverifiedEmail('')}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'rgba(228,225,233,0.35)', transition: 'color .15s' }}
+            onMouseEnter={e => e.target.style.color = '#e4e1e9'}
+            onMouseLeave={e => e.target.style.color = 'rgba(228,225,233,0.35)'}>
             ← Back to login
           </button>
-        </motion.div>
-      </div>
+        </div>
+      </AuthLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-bg bg-grid flex items-center justify-center px-6">
-      <motion.form
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        onSubmit={handleSubmit}
-        className="w-full max-w-sm bg-black/20 backdrop-blur-xl border border-border rounded-xl p-8 space-y-5 shadow-2xl"
-      >
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">
-            <span className="text-gradient">Welcome back</span>
-          </h1>
-          <p className="text-sm text-text/50 mt-1">Sign in to your account</p>
+    <AuthLayout heading="Welcome back" subheading="Sign in to your NexPrompt account.">
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <AnimatePresence>{error && <ErrorMessage message={error} />}</AnimatePresence>
+
+        {/* Email */}
+        <div className="auth-field">
+          <label className="auth-field-label" htmlFor="login-email">Email Address</label>
+          <IconInput icon="alternate_email" id="login-email" type="email" value={email}
+            onChange={e => setEmail(e.target.value)} placeholder="name@example.com" required autoComplete="email" />
         </div>
-        <ErrorMessage message={error} />
-        <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="you@example.com" />
-        <PasswordInput
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          placeholder="Enter your password"
-        />
-        <Button type="submit" className="w-full" loading={loading}>
-          <LogIn size={16} />
-          Sign in
-        </Button>
-        <div className="flex justify-between text-sm text-text/50">
-          <Link to="/register" className="hover:text-primary transition-colors">Create account</Link>
-          <Link to="/forgot-password" className="hover:text-primary transition-colors">Forgot password?</Link>
+
+        {/* Password */}
+        <div className="auth-field">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <label className="auth-field-label" htmlFor="login-pw">Password</label>
+            <Link to="/forgot-password" className="auth-link" style={{ fontSize: 12, fontWeight: 500 }}>Forgot password?</Link>
+          </div>
+          <IconInput icon="lock" id="login-pw" type="password" value={password}
+            onChange={e => setPassword(e.target.value)} placeholder="Enter your password" required autoComplete="current-password" />
         </div>
-        <div className="text-center pt-2 border-t border-border/50">
-          <Link to="/admin/login" className="inline-flex items-center gap-1.5 text-xs text-text/40 hover:text-accent transition-colors">
-            <Shield size={12} />
-            Admin login
+
+        {/* CTA */}
+        <button type="submit" className="auth-btn" disabled={loading}>
+          {loading
+            ? <><span className="msym" style={{ fontSize: 18, animation: 'auth-spin 0.8s linear infinite' }}>progress_activity</span> Signing in…</>
+            : <><span>Sign in</span><span className="msym" style={{ fontSize: 18 }}>login</span></>
+          }
+        </button>
+        <style>{`@keyframes auth-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
+
+        {/* Register link */}
+        <p style={{ textAlign: 'center', fontSize: 14, color: 'rgba(228,225,233,0.5)', margin: 0 }}>
+          Don't have an account?{' '}
+          <Link to="/register" className="auth-link">Create one free</Link>
+        </p>
+
+        {/* Divider */}
+        <div className="auth-divider">or continue with</div>
+
+        {/* Social */}
+        <div style={{ display: 'flex', gap: 12 }}>
+          <GoogleAuthButton onError={(msg) => setError(msg)} />
+        </div>
+
+        {/* Admin link */}
+        <div style={{ textAlign: 'center', paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+          <Link to="/admin/login" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'rgba(228,225,233,0.2)', textDecoration: 'none', transition: 'color .15s' }}
+            onMouseEnter={e => e.currentTarget.style.color = 'rgba(228,225,233,0.5)'}
+            onMouseLeave={e => e.currentTarget.style.color = 'rgba(228,225,233,0.2)'}>
+            <Shield size={12} /> Admin login
           </Link>
         </div>
-      </motion.form>
-    </div>
+      </form>
+    </AuthLayout>
   );
 }

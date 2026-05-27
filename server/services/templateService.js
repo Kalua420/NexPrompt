@@ -12,16 +12,17 @@ import { CREDIT_PACKS, CREDIT_COSTS } from '../config/tiers.js';
  * Shows templates the user can afford based on their current credits
  */
 export async function getTemplatesByCredits(userId, options = {}) {
-  const { category, search, featured, plan, limit = 50 } = options;
+  const { category, search, featured, plan, useCase, limit = 50 } = options;
   
   // Get user's current credit balance
   const userCredits = await getCreditBalance(userId);
   
   // Build query
   const where = {};
-  if (category) where.category = category;
+  if (category && category !== 'All') where.category = category;
+  if (useCase) where.useCase = useCase;
   if (featured) where.featured = true;
-  if (search) where.title = { contains: search };
+  if (search) where.title = { contains: search, mode: 'insensitive' };
   if (plan) where.plan = plan;
   
   // Get all templates
@@ -38,7 +39,7 @@ export async function getTemplatesByCredits(userId, options = {}) {
     userCredits,
     creditsNeeded: Math.max(0, template.minCreditsRequired - userCredits),
     recommendedPack: template.recommendedFor,
-    providers: template.providers ? template.providers.split(',').map(p => p.trim()) : [],
+    providers: Array.isArray(template.providers) ? template.providers : [],
     useCase: template.useCase,
   }));
 }
@@ -48,14 +49,15 @@ export async function getTemplatesByCredits(userId, options = {}) {
  * Useful for showing users what templates they can unlock with more credits
  */
 export async function getTemplatesByTier(userId, options = {}) {
-  const { category, search, featured, plan } = options;
+  const { category, search, featured, plan, useCase } = options;
   
   const userCredits = await getCreditBalance(userId);
   
   const where = {};
-  if (category) where.category = category;
+  if (category && category !== 'All') where.category = category;
+  if (useCase) where.useCase = useCase;
   if (featured) where.featured = true;
-  if (search) where.title = { contains: search };
+  if (search) where.title = { contains: search, mode: 'insensitive' };
   if (plan) where.plan = plan;
   
   const templates = await prisma.template.findMany({
@@ -96,7 +98,7 @@ export async function getRecommendedTemplates(userId, options = {}) {
   const userCredits = await getCreditBalance(userId);
   
   const where = { featured: true };
-  if (category) where.category = category;
+  if (category && category !== 'All') where.category = category;
   
   const templates = await prisma.template.findMany({
     where,
@@ -155,7 +157,7 @@ export async function getTemplatesForPack(packId, userId = null) {
     return templates.map(t => ({
       ...t,
       canUse: true,
-      providers: t.providers ? t.providers.split(',').map(p => p.trim()) : [],
+      providers: Array.isArray(t.providers) ? t.providers : [],
     }));
   }
   
@@ -165,7 +167,7 @@ export async function getTemplatesForPack(packId, userId = null) {
     ...t,
     canUseNow: userCredits >= t.minCreditsRequired,
     canUseWithPack: true,
-    providers: t.providers ? t.providers.split(',').map(p => p.trim()) : [],
+    providers: Array.isArray(t.providers) ? t.providers : [],
   }));
 }
 
@@ -222,7 +224,7 @@ export async function createTemplateWithTier(data) {
       featured,
       minCreditsRequired,
       recommendedFor,
-      providers: providers.length > 0 ? providers.join(', ') : null,
+      providers: providers.length > 0 ? providers : null,
       useCase,
     },
   });
@@ -238,7 +240,7 @@ export async function getTemplatesByProvider(provider, userId = null) {
   const templates = await prisma.template.findMany({
     where: {
       providers: {
-        contains: provider,
+        array_contains: provider,
       },
     },
     orderBy: { minCreditsRequired: 'asc' },
@@ -247,7 +249,7 @@ export async function getTemplatesByProvider(provider, userId = null) {
   if (!userId) {
     return templates.map(t => ({
       ...t,
-      providers: t.providers ? t.providers.split(',').map(p => p.trim()) : [],
+      providers: Array.isArray(t.providers) ? t.providers : [],
     }));
   }
   
@@ -258,7 +260,7 @@ export async function getTemplatesByProvider(provider, userId = null) {
     canUse: userCredits >= t.minCreditsRequired,
     userCredits,
     creditsNeeded: Math.max(0, t.minCreditsRequired - userCredits),
-    providers: t.providers ? t.providers.split(',').map(p => p.trim()) : [],
+    providers: Array.isArray(t.providers) ? t.providers : [],
   }));
 }
 
@@ -277,7 +279,7 @@ export async function getTemplatesByUseCase(useCase, userId = null) {
   if (!userId) {
     return templates.map(t => ({
       ...t,
-      providers: t.providers ? t.providers.split(',').map(p => p.trim()) : [],
+      providers: Array.isArray(t.providers) ? t.providers : [],
     }));
   }
   
@@ -288,7 +290,7 @@ export async function getTemplatesByUseCase(useCase, userId = null) {
     canUse: userCredits >= t.minCreditsRequired,
     userCredits,
     creditsNeeded: Math.max(0, t.minCreditsRequired - userCredits),
-    providers: t.providers ? t.providers.split(',').map(p => p.trim()) : [],
+    providers: Array.isArray(t.providers) ? t.providers : [],
   }));
 }
 
@@ -337,17 +339,17 @@ export async function getTemplateSuggestions(userId) {
     userCredits,
     canUseNow: canUseNow.map(t => ({
       ...t,
-      providers: t.providers ? t.providers.split(',').map(p => p.trim()) : [],
+      providers: Array.isArray(t.providers) ? t.providers : [],
     })),
     almostThere: almostThere.map(t => ({
       ...t,
       creditsNeeded: t.minCreditsRequired - userCredits,
-      providers: t.providers ? t.providers.split(',').map(p => p.trim()) : [],
+      providers: Array.isArray(t.providers) ? t.providers : [],
     })),
     premium: premium.map(t => ({
       ...t,
       creditsNeeded: t.minCreditsRequired - userCredits,
-      providers: t.providers ? t.providers.split(',').map(p => p.trim()) : [],
+      providers: Array.isArray(t.providers) ? t.providers : [],
     })),
   };
 }
@@ -373,7 +375,7 @@ export async function getTemplateWithCostBreakdown(templateId, userId = null) {
   
   if (!template) return null;
   
-  const providers = template.providers ? template.providers.split(',').map(p => p.trim()) : [];
+  const providers = Array.isArray(template.providers) ? template.providers : [];
   const costBreakdown = providers.map(p => ({
     provider: p,
     cost: CREDIT_COSTS[p] || 1,
@@ -386,7 +388,6 @@ export async function getTemplateWithCostBreakdown(templateId, userId = null) {
     providers,
     costBreakdown,
     minCost,
-    providers: template.providers ? template.providers.split(',').map(p => p.trim()) : [],
   };
   
   if (userId) {

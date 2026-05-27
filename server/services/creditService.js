@@ -1,5 +1,5 @@
 import { prisma } from '../src/index.js';
-import { CREDIT_COSTS, CREDIT_PACKS } from '../config/tiers.js';
+import { CREDIT_COSTS } from '../config/tiers.js';
 
 /**
  * Get or create credit balance for a user
@@ -41,9 +41,8 @@ export async function addCredits(userId, amount, type, description, metadata = n
         userId,
         type,
         amount,
-        balance: newBalance,
         description,
-        metadata: metadata ? JSON.stringify(metadata) : null,
+        metadata,
       },
     }),
   ]);
@@ -73,9 +72,8 @@ export async function deductCredits(userId, amount, description, metadata = null
         userId,
         type: 'usage',
         amount: -amount,
-        balance: newBalance,
         description,
-        metadata: metadata ? JSON.stringify(metadata) : null,
+        metadata,
       },
     }),
   ]);
@@ -108,45 +106,29 @@ export async function getCreditTransactions(userId, limit = 50) {
     take: limit,
   });
   
-  return transactions.map(t => ({
-    ...t,
-    metadata: t.metadata ? JSON.parse(t.metadata) : null,
-  }));
-}
-
-/**
- * Get credit pack by ID
- */
-export function getCreditPack(packId) {
-  return CREDIT_PACKS[packId] || null;
-}
-
-/**
- * Get all credit packs
- */
-export function getAllCreditPacks() {
-  return Object.values(CREDIT_PACKS);
+  return transactions;
 }
 
 /**
  * Process credit pack purchase
+ * packId is a database cuid — look it up from the DB, not the static config
  */
 export async function processCreditPurchase(userId, packId) {
-  const pack = getCreditPack(packId);
-  if (!pack) {
+  const pack = await prisma.creditPack.findUnique({ where: { id: packId } });
+  if (!pack || !pack.isActive) {
     throw new Error('Invalid credit pack');
   }
-  
-  const totalCredits = pack.credits + pack.bonus;
-  const description = `Purchased ${pack.name} - ${pack.credits} credits${pack.bonus > 0 ? ` + ${pack.bonus} bonus` : ''}`;
-  
+
+  const totalCredits = pack.credits + pack.bonusCredits;
+  const description = `Purchased ${pack.name} - ${pack.credits} credits${pack.bonusCredits > 0 ? ` + ${pack.bonusCredits} bonus` : ''}`;
+
   const newBalance = await addCredits(
     userId,
     totalCredits,
     'purchase',
     description,
-    { packId, baseCredits: pack.credits, bonusCredits: pack.bonus }
+    { packId, baseCredits: pack.credits, bonusCredits: pack.bonusCredits }
   );
-  
+
   return { newBalance, creditsAdded: totalCredits, pack };
 }

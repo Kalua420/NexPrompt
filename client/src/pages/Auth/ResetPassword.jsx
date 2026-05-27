@@ -1,40 +1,87 @@
 import { useState, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import api from '../../utils/api.js';
-import Input from '../../components/Input';
-import PasswordInput from '../../components/PasswordInput';
-import Button from '../../components/Button';
-import ErrorMessage from '../../components/ErrorMessage';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Eye, EyeOff, CheckCircle2, AlertTriangle } from 'lucide-react';
+import ErrorMessage from '../../components/ErrorMessage.jsx';
 import { useToast } from '../../hooks/useToast.jsx';
+import api from '../../utils/api.js';
+import AuthLayout from './AuthLayout.jsx';
+
+/* ─── Password field with show/hide toggle ────────────────────── */
+function PwInput({ id, label, value, onChange, placeholder, autoComplete }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="auth-field">
+      <label className="auth-field-label" htmlFor={id}>{label}</label>
+      <div className="auth-input-wrap">
+        <span className="msym auth-input-icon">lock</span>
+        <input
+          id={id}
+          className="auth-input auth-input-pw"
+          type={show ? 'text' : 'password'}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          required
+          autoComplete={autoComplete}
+        />
+        <button type="button" onClick={() => setShow(s => !s)}
+          style={{ position: 'absolute', right: 12, background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(228,225,233,0.35)', padding: 0, display: 'flex', alignItems: 'center' }}>
+          {show ? <EyeOff size={16} /> : <Eye size={16} />}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Password requirement row ────────────────────────────────── */
+function Req({ met, text }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: met ? '#4ade80' : 'rgba(228,225,233,0.3)', transition: 'color .2s' }}>
+      <span style={{
+        width: 16, height: 16, borderRadius: '50%', flexShrink: 0,
+        background: met ? 'rgba(74,222,128,0.15)' : 'rgba(255,255,255,0.04)',
+        border: `1px solid ${met ? 'rgba(74,222,128,0.4)' : 'rgba(255,255,255,0.08)'}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        transition: 'all .2s',
+      }}>
+        {met && <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1.5 4L3.5 6L6.5 2" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+      </span>
+      {text}
+    </div>
+  );
+}
+
+/* ─── Strength bar ────────────────────────────────────────────── */
+const STRENGTH = [
+  { label: 'Weak',   color: '#ef4444' },
+  { label: 'Fair',   color: '#f59e0b' },
+  { label: 'Good',   color: '#3b82f6' },
+  { label: 'Strong', color: '#22c55e' },
+];
 
 export default function ResetPassword() {
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const { showToast } = useToast();
-  const token = searchParams.get('token');
+  const [searchParams]  = useSearchParams();
+  const navigate        = useNavigate();
+  const { showToast }   = useToast();
+  const token           = searchParams.get('token');
 
-  const [password, setPassword] = useState('');
+  const [password,        setPassword]        = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
+  const [loading,         setLoading]         = useState(false);
+  const [error,           setError]           = useState('');
+  const [success,         setSuccess]         = useState(false);
 
-  // Password strength calculation
-  const passwordStrength = useMemo(() => {
-    if (!password) return { score: 0, label: '', color: '' };
-    
-    let score = 0;
-    if (password.length >= 8) score++;
-    if (password.length >= 12) score++;
-    if (/[a-z]/.test(password)) score++;
-    if (/[A-Z]/.test(password)) score++;
-    if (/\d/.test(password)) score++;
-    if (/[^a-zA-Z0-9]/.test(password)) score++;
-
-    if (score <= 2) return { score: 1, label: 'Weak', color: 'bg-red-500' };
-    if (score <= 4) return { score: 2, label: 'Fair', color: 'bg-yellow-500' };
-    if (score <= 5) return { score: 3, label: 'Good', color: 'bg-blue-500' };
-    return { score: 4, label: 'Strong', color: 'bg-green-500' };
+  const strength = useMemo(() => {
+    if (!password) return 0;
+    let s = 0;
+    if (password.length >= 8)          s++;
+    if (password.length >= 12)         s++;
+    if (/[a-z]/.test(password))        s++;
+    if (/[A-Z]/.test(password))        s++;
+    if (/\d/.test(password))           s++;
+    if (/[^a-zA-Z0-9]/.test(password)) s++;
+    return Math.min(4, Math.ceil(s / 1.5));
   }, [password]);
 
   const passwordsMatch = password && confirmPassword && password === confirmPassword;
@@ -42,268 +89,136 @@ export default function ResetPassword() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-
-    if (!token) {
-      setError('Invalid or missing reset token');
-      return;
-    }
-
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters');
-      return;
-    }
-
-    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
-      setError('Password must contain uppercase, lowercase, and number');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
+    if (!token)                                              return setError('Invalid or missing reset token.');
+    if (password.length < 8)                                return setError('Password must be at least 8 characters.');
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password))  return setError('Password must contain uppercase, lowercase, and a number.');
+    if (password !== confirmPassword)                        return setError('Passwords do not match.');
 
     setLoading(true);
-
     try {
-      const response = await api.post('/api/auth/reset-password', { token, password });
+      await api.post('/api/auth/reset-password', { token, password });
       setSuccess(true);
-      showToast('Password reset successful! Redirecting to login...', 'success');
-      
-      setTimeout(() => {
-        navigate('/login');
-      }, 2000);
+      showToast('Password reset successful!', 'success');
+      setTimeout(() => navigate('/login'), 2200);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to reset password');
+      setError(err.response?.data?.error || 'Failed to reset password. The link may have expired.');
     } finally {
       setLoading(false);
     }
   };
 
+  /* ── Invalid token ── */
   if (!token) {
     return (
-      <div className="min-h-screen bg-bg bg-grid flex items-center justify-center px-6">
-        <div className="max-w-md w-full bg-black/20 backdrop-blur-xl border border-border rounded-xl p-8 text-center animate-fade-in shadow-2xl">
-          <div className="w-20 h-20 bg-red-500/10 border border-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-            <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
+      <AuthLayout heading="Invalid reset link" subheading="This link is missing a token.">
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, textAlign: 'center' }}>
+          <div style={{ width: 56, height: 56, borderRadius: 14, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <AlertTriangle size={26} style={{ color: '#ef4444' }} />
           </div>
-          <h1 className="text-2xl font-bold text-text mb-4">Invalid Reset Link</h1>
-          <p className="text-text/60 mb-8">
+          <p style={{ fontSize: 14, color: 'rgba(228,225,233,0.5)', margin: 0, lineHeight: 1.65 }}>
             This password reset link is invalid or has expired. Please request a new one.
           </p>
-          <Button onClick={() => navigate('/forgot-password')} fullWidth>
-            Request New Reset Link
-          </Button>
+          <button className="auth-btn" onClick={() => navigate('/forgot-password')}>
+            <span>Request new reset link</span>
+            <span className="msym" style={{ fontSize: 18 }}>send</span>
+          </button>
         </div>
-      </div>
+      </AuthLayout>
     );
   }
 
+  /* ── Success ── */
   if (success) {
     return (
-      <div className="min-h-screen bg-bg bg-grid flex items-center justify-center px-6">
-        <div className="max-w-md w-full bg-black/20 backdrop-blur-xl border border-border rounded-xl p-8 text-center animate-fade-in shadow-2xl">
-          <div className="w-20 h-20 bg-green-500/10 border border-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6 animate-scale-in">
-            <svg className="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-bold text-text mb-4">Password Reset Successful!</h1>
-          <p className="text-text/60 mb-6">
-            Your password has been successfully reset. You can now login with your new password.
-          </p>
-          <div className="flex items-center justify-center gap-2 text-sm text-text/50">
-            <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
-            <span>Redirecting to login...</span>
+      <AuthLayout heading="Password updated" subheading="You can now sign in with your new password.">
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, textAlign: 'center' }}>
+          <motion.div
+            initial={{ scale: 0.7, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            style={{ width: 56, height: 56, borderRadius: 14, background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <CheckCircle2 size={26} style={{ color: '#22c55e' }} />
+          </motion.div>
+          <p style={{ fontSize: 14, color: 'rgba(228,225,233,0.5)', margin: 0 }}>Redirecting you to sign in…</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'rgba(228,225,233,0.3)' }}>
+            <motion.div animate={{ scale: [1, 1.4, 1] }} transition={{ repeat: Infinity, duration: 1 }}
+              style={{ width: 6, height: 6, borderRadius: '50%', background: '#FF4D1C' }} />
+            Redirecting…
           </div>
         </div>
-      </div>
+      </AuthLayout>
     );
   }
 
+  /* ── Main form ── */
   return (
-    <div className="min-h-screen bg-bg bg-grid flex items-center justify-center px-6">
-      <div className="max-w-md w-full animate-fade-in">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 border border-primary/20 rounded-2xl mb-4 glow-primary">
-            <svg className="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-            </svg>
+    <AuthLayout heading="Set new password" subheading="Create a strong password for your account.">
+      <style>{`@keyframes auth-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
+
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <AnimatePresence>{error && <ErrorMessage message={error} />}</AnimatePresence>
+
+        {/* New password + strength */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <PwInput id="rp-pw" label="New password" value={password}
+            onChange={e => setPassword(e.target.value)}
+            placeholder="Enter new password" autoComplete="new-password" />
+
+          {password && (
+            <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+              style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {/* Strength bar */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 11, color: 'rgba(228,225,233,0.4)' }}>Strength</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: STRENGTH[strength - 1]?.color || 'rgba(228,225,233,0.3)' }}>
+                  {STRENGTH[strength - 1]?.label || ''}
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: 4 }}>
+                {[1, 2, 3, 4].map(l => (
+                  <div key={l} style={{
+                    flex: 1, height: 3, borderRadius: 99,
+                    background: l <= strength ? (STRENGTH[strength - 1]?.color || '#ccc') : 'rgba(255,255,255,0.07)',
+                    transition: 'background .3s',
+                  }} />
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Requirements */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingTop: 4 }}>
+            <Req met={password.length >= 8}   text="At least 8 characters" />
+            <Req met={/[A-Z]/.test(password)} text="One uppercase letter" />
+            <Req met={/[a-z]/.test(password)} text="One lowercase letter" />
+            <Req met={/\d/.test(password)}    text="One number" />
           </div>
-          <h1 className="text-4xl font-bold text-gradient mb-2">
-            Reset Password
-          </h1>
-          <p className="text-text/60">Create a strong new password for your account</p>
         </div>
 
-        {/* Form Card */}
-        <div className="bg-black/20 backdrop-blur-xl border border-border rounded-xl p-8 shadow-2xl">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
-              <div className="animate-shake">
-                <ErrorMessage message={error} />
-              </div>
-            )}
-
-            {/* New Password Field */}
-            <div>
-              <label className="block text-sm font-semibold text-text mb-2">
-                New Password
-              </label>
-              <PasswordInput
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter new password"
-                required
-              />
-              
-              {/* Password Strength Indicator */}
-              {password && (
-                <div className="mt-3 space-y-2 animate-fade-in">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-text/60 font-medium">Password Strength</span>
-                    <span className={`font-semibold ${
-                      passwordStrength.score === 1 ? 'text-red-500' :
-                      passwordStrength.score === 2 ? 'text-yellow-500' :
-                      passwordStrength.score === 3 ? 'text-blue-500' :
-                      'text-green-500'
-                    }`}>
-                      {passwordStrength.label}
-                    </span>
-                  </div>
-                  <div className="flex gap-1">
-                    {[1, 2, 3, 4].map((level) => (
-                      <div
-                        key={level}
-                        className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
-                          level <= passwordStrength.score
-                            ? passwordStrength.color
-                            : 'bg-border/30'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Password Requirements */}
-              <div className="mt-3 space-y-1.5">
-                <PasswordRequirement 
-                  met={password.length >= 8} 
-                  text="At least 8 characters"
-                />
-                <PasswordRequirement 
-                  met={/[A-Z]/.test(password)} 
-                  text="One uppercase letter"
-                />
-                <PasswordRequirement 
-                  met={/[a-z]/.test(password)} 
-                  text="One lowercase letter"
-                />
-                <PasswordRequirement 
-                  met={/\d/.test(password)} 
-                  text="One number"
-                />
-              </div>
-            </div>
-
-            {/* Confirm Password Field */}
-            <div>
-              <label className="block text-sm font-semibold text-text mb-2">
-                Confirm Password
-              </label>
-              <PasswordInput
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm new password"
-                required
-              />
-              
-              {/* Password Match Indicator */}
-              {confirmPassword && (
-                <div className={`mt-2 flex items-center gap-2 text-xs font-medium animate-fade-in ${
-                  passwordsMatch ? 'text-green-500' : 'text-red-500'
-                }`}>
-                  {passwordsMatch ? (
-                    <>
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                      <span>Passwords match</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                      </svg>
-                      <span>Passwords do not match</span>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Submit Button */}
-            <Button 
-              type="submit" 
-              fullWidth 
-              loading={loading}
-              className="mt-8"
-            >
-              {loading ? 'Resetting Password...' : 'Reset Password'}
-            </Button>
-
-            {/* Back to Login Link */}
-            <div className="text-center pt-2">
-              <button
-                type="button"
-                onClick={() => navigate('/login')}
-                className="inline-flex items-center gap-2 text-sm text-text/50 hover:text-primary font-medium transition-colors group"
-              >
-                <svg className="w-4 h-4 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
-                Back to Login
-              </button>
-            </div>
-          </form>
+        {/* Confirm password */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <PwInput id="rp-confirm" label="Confirm password" value={confirmPassword}
+            onChange={e => setConfirmPassword(e.target.value)}
+            placeholder="Confirm new password" autoComplete="new-password" />
+          {confirmPassword && (
+            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+              style={{ fontSize: 12, margin: 0, color: passwordsMatch ? '#4ade80' : '#f87171', display: 'flex', alignItems: 'center', gap: 6 }}>
+              {passwordsMatch ? '✓ Passwords match' : '✗ Passwords do not match'}
+            </motion.p>
+          )}
         </div>
 
-        {/* Security Note */}
-        <div className="mt-6 text-center">
-          <p className="text-xs text-text/40 flex items-center justify-center gap-2">
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-            </svg>
-            Your password is encrypted and secure
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
+        <button type="submit" className="auth-btn" disabled={loading} style={{ marginTop: 4 }}>
+          {loading
+            ? <><span className="msym" style={{ fontSize: 18, animation: 'auth-spin 0.8s linear infinite' }}>progress_activity</span> Resetting…</>
+            : <><span className="msym" style={{ fontSize: 18 }}>lock_reset</span><span>Reset password</span></>
+          }
+        </button>
 
-// Password Requirement Component
-function PasswordRequirement({ met, text }) {
-  return (
-    <div className={`flex items-center gap-2 text-xs transition-colors ${
-      met ? 'text-green-500' : 'text-text/40'
-    }`}>
-      <svg 
-        className={`w-4 h-4 transition-all ${met ? 'scale-100' : 'scale-90 opacity-50'}`} 
-        fill="currentColor" 
-        viewBox="0 0 20 20"
-      >
-        {met ? (
-          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-        ) : (
-          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 9a1 1 0 000 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-        )}
-      </svg>
-      <span className="font-medium">{text}</span>
-    </div>
+        <p style={{ textAlign: 'center', fontSize: 13, color: 'rgba(228,225,233,0.35)', margin: 0 }}>
+          <Link to="/login" className="auth-link" style={{ fontWeight: 500 }}>← Back to sign in</Link>
+        </p>
+      </form>
+    </AuthLayout>
   );
 }
