@@ -20,10 +20,16 @@ export default function AdminLogin() {
   // Already logged in as admin → go straight to dashboard
   useEffect(() => {
     if (!user) return;
+    
     if (user.role === 'admin') {
-      navigate('/admin/dashboard', { replace: true });
+      // Only navigate if we're not already on the dashboard
+      if (window.location.pathname !== '/dashboard') {
+        navigate('/dashboard', { replace: true });
+      }
     } else {
-      navigate('/dashboard', { replace: true });
+      // Non-admin users should go to the main user app
+      const userAppUrl = import.meta.env.VITE_USER_APP_URL || 'https://nexprompt.site';
+      window.location.replace(`${userAppUrl}/dashboard`);
     }
   }, [user, navigate]);
 
@@ -39,7 +45,7 @@ export default function AdminLogin() {
         return;
       }
       login(data.user, data.accessToken, data.refreshToken);
-      navigate('/admin/dashboard');
+      navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed');
     } finally {
@@ -93,13 +99,13 @@ export default function AdminLogin() {
         </Button>
 
         <div className="text-center text-sm text-text/50">
-          <Link
-            to="/login"
+          <a
+            href={(import.meta.env.VITE_USER_APP_URL || 'https://nexprompt.site') + '/login'}
             className="inline-flex items-center gap-1.5 hover:text-accent transition-colors"
           >
             <ArrowLeft size={14} />
             Back to user login
-          </Link>
+          </a>
         </div>
       </motion.form>
     </div>

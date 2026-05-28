@@ -6,19 +6,23 @@ export default defineConfig({
   plugins: [
     react(),
     {
-      name: 'admin-html-fallback',
+      name: 'admin-html-transform',
       configureServer(server) {
-        server.middlewares.use((req, res, next) => {
-          // Serve admin.html for all routes in dev mode
-          if (req.url === '/' || !req.url.includes('.')) {
-            req.url = '/admin.html';
-          }
-          next();
-        });
+        return () => {
+          server.middlewares.use((req, res, next) => {
+            // Rewrite all navigation requests to admin.html
+            if (req.url === '/' || req.url === '/index.html' || (!req.url.includes('.') && !req.url.startsWith('/src') && !req.url.startsWith('/@'))) {
+              req.url = '/admin.html';
+            }
+            next();
+          });
+        };
       },
     },
   ],
   root: '.',
+  // Use separate cache directory to avoid conflicts with main app
+  cacheDir: 'node_modules/.vite-admin',
   build: {
     outDir: 'dist-admin',
     rollupOptions: {
@@ -27,6 +31,18 @@ export default defineConfig({
   },
   server: {
     port: 5174,
-    host: 'localhost',
+    host: '0.0.0.0',
+    allowedHosts: [
+      'nexprompt.local',
+      'admin.nexprompt.local',
+      'localhost',
+    ],
+    // Disable browser caching completely
+    headers: {
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'Surrogate-Control': 'no-store',
+    },
   },
 });

@@ -53,11 +53,13 @@ export default function Admin() {
 
   useEffect(() => {
     if (!user) {
-      navigate('/admin/login');
+      navigate('/login');
       return;
     }
     if (user.role !== 'admin') {
-      navigate('/dashboard');
+      // Redirect non-admin users to the main user app
+      const userAppUrl = import.meta.env.VITE_USER_APP_URL || 'https://nexprompt.site';
+      window.location.replace(`${userAppUrl}/dashboard`);
     }
   }, [user, navigate]);
 
@@ -94,7 +96,10 @@ export default function Admin() {
         </span>
         <div className="ml-auto flex items-center gap-3">
           <button
-            onClick={() => { window.location.href = import.meta.env.VITE_USER_APP_URL || 'https://nexprompt.site/dashboard'; }}
+            onClick={() => { 
+              const userAppUrl = import.meta.env.VITE_USER_APP_URL || 'https://nexprompt.site';
+              window.location.href = `${userAppUrl}/dashboard`;
+            }}
             className="flex items-center gap-1.5 text-xs text-text/40 hover:text-text transition-colors"
           >
             <ArrowLeft size={14} /> Back to app

@@ -50,7 +50,9 @@ export default function Login() {
   useEffect(() => {
     if (!user) return;
     if (user.role === 'admin') {
-      navigate('/admin/dashboard', { replace: true });
+      // Redirect admin users to the admin subdomain
+      const adminUrl = import.meta.env.VITE_ADMIN_URL || 'https://admin.nexprompt.site';
+      window.location.replace(`${adminUrl}/dashboard`);
     } else {
       navigate('/dashboard', { replace: true });
     }
@@ -63,7 +65,9 @@ export default function Login() {
       const { data } = await api.post('/api/auth/login', { email, password });
       if (data.user.role === 'admin') {
         login(data.user, data.accessToken, data.refreshToken);
-        navigate('/admin/dashboard');
+        // Redirect admin users to the admin subdomain
+        const adminUrl = import.meta.env.VITE_ADMIN_URL || 'https://admin.nexprompt.site';
+        window.location.replace(`${adminUrl}/dashboard`);
         return;
       }
       login(data.user, data.accessToken, data.refreshToken);

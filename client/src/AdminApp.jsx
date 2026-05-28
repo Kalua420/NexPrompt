@@ -19,10 +19,9 @@ function ProtectedAdminRoute({ children }) {
   }
 
   if (user.role !== 'admin') {
-    // Kick non-admin users back to the main app immediately, no flash
-    window.location.replace(
-      import.meta.env.VITE_USER_APP_URL || 'https://nexprompt.site/dashboard'
-    );
+    // Kick non-admin users back to the main app dashboard
+    const userAppUrl = import.meta.env.VITE_USER_APP_URL || 'https://nexprompt.site';
+    window.location.replace(`${userAppUrl}/dashboard`);
     return null;
   }
 
@@ -34,8 +33,13 @@ export default function AdminApp() {
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Suspense fallback={<div className="flex items-center justify-center h-screen bg-bg text-text">Loading...</div>}>
         <Routes>
+          {/* Root redirects to login */}
           <Route path="/" element={<Navigate to="/login" replace />} />
+          
+          {/* Admin login page */}
           <Route path="/login" element={<AdminLogin />} />
+          
+          {/* Admin dashboard - protected */}
           <Route
             path="/dashboard"
             element={
@@ -44,6 +48,7 @@ export default function AdminApp() {
               </ProtectedAdminRoute>
             }
           />
+          
           {/* Catch-all: redirect unknown paths to login */}
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>

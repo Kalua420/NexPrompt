@@ -44,10 +44,14 @@ const allowedOrigins = process.env.CLIENT_URL
   ? process.env.CLIENT_URL.split(',').map(url => url.trim())
   : ['http://localhost:5173', 'http://127.0.0.1:5173'];
 
-// In development, also allow the alternate localhost form
+// In development, also allow the alternate localhost form and .local domains
 if (process.env.NODE_ENV !== 'production') {
   if (!allowedOrigins.includes('http://127.0.0.1:5173')) allowedOrigins.push('http://127.0.0.1:5173');
   if (!allowedOrigins.includes('http://localhost:5173'))  allowedOrigins.push('http://localhost:5173');
+  if (!allowedOrigins.includes('http://localhost:5174'))  allowedOrigins.push('http://localhost:5174');
+  // Add .local domains for subdomain testing
+  if (!allowedOrigins.includes('http://nexprompt.local:5173')) allowedOrigins.push('http://nexprompt.local:5173');
+  if (!allowedOrigins.includes('http://admin.nexprompt.local:5174')) allowedOrigins.push('http://admin.nexprompt.local:5174');
 }
 
 const io = new Server(httpServer, {
@@ -65,8 +69,13 @@ app.use(cors({
     // Allow requests with no origin (mobile apps, curl, Postman, server-to-server)
     if (!origin) return callback(null, true);
     // In development, allow any localhost/127.0.0.1 origin regardless of port
+    // Also allow .local domains for local subdomain testing
     if (process.env.NODE_ENV !== 'production') {
       if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+        return callback(null, true);
+      }
+      // Allow .local domains (e.g., nexprompt.local, admin.nexprompt.local)
+      if (/^https?:\/\/[a-z0-9.-]+\.local(:\d+)?$/.test(origin)) {
         return callback(null, true);
       }
     }

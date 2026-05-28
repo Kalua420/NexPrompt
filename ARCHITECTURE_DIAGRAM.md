@@ -1,0 +1,348 @@
+# NexPrompt Architecture Diagram
+
+## System Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         INTERNET                                 │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              │
+                    ┌─────────┴─────────┐
+                    │                   │
+                    │                   │
+         ┌──────────▼──────────┐   ┌───▼──────────────┐
+         │  nexprompt.site     │   │ admin.nexprompt  │
+         │  (User App)         │   │ .site            │
+         │  Port 443 (HTTPS)   │   │ (Admin App)      │
+         └──────────┬──────────┘   └───┬──────────────┘
+                    │                   │
+                    │                   │
+         ┌──────────▼───────────────────▼──────────┐
+         │         NGINX (Reverse Proxy)           │
+         │  - Serves static files                  │
+         │  - Proxies /api/ to backend             │
+         │  - Proxies /socket.io/ to backend       │
+         │  - SSL termination                      │
+         └──────────┬──────────────────────────────┘
+                    │
+                    │
+         ┌──────────▼──────────┐
+         │  Express API        │
+         │  127.0.0.1:5000     │
+         │  - JWT Auth         │
+         │  - REST API         │
+         │  - Socket.IO        │
+         │  - Prisma ORM       │
+         └──────────┬──────────┘
+                    │
+                    │
+         ┌──────────▼──────────┐
+         │  MySQL Database     │
+         │  - Users            │
+         │  - Prompts          │
+         │  - Templates        │
+         │  - Subscriptions    │
+         └─────────────────────┘
+```
+
+## Domain Routing
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    nexprompt.site (User App)                     │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Routes:                                                         │
+│  ├─ /                    → Landing page                         │
+│  ├─ /login               → User login                           │
+│  ├─ /register            → User registration                    │
+│  ├─ /dashboard           → User dashboard                       │
+│  ├─ /workspace           → Prompt workspace                     │
+│  ├─ /templates           → Template marketplace                 │
+│  ├─ /favorites           → Saved prompts                        │
+│  ├─ /subscription        → Subscription management              │
+│  ├─ /settings            → User settings                        │
+│  └─ /admin/*             → 301 Redirect to admin.nexprompt.site │
+│                                                                  │
+│  Served from: /var/www/nexprompt/client/dist/                   │
+│  Build: npm run build                                            │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                admin.nexprompt.site (Admin App)                  │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Routes:                                                         │
+│  ├─ /                    → Redirect to /login                   │
+│  ├─ /login               → Admin login                          │
+│  ├─ /dashboard           → Admin dashboard (protected)          │
+│  └─ /*                   → Redirect to /login                   │
+│                                                                  │
+│  Served from: /var/www/nexprompt/client/dist-admin/             │
+│  Build: npm run build:admin                                      │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Authentication Flow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      User Authentication                         │
+└─────────────────────────────────────────────────────────────────┘
+
+Regular User Login:
+┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐
+│  User    │────▶│  Login   │────▶│   API    │────▶│  User    │
+│  visits  │     │  Page    │     │  /login  │     │Dashboard │
+│nexprompt │     │          │     │          │     │          │
+│  .site   │     │          │     │ role:    │     │          │
+│          │     │          │     │ 'user'   │     │          │
+└──────────┘     └──────────┘     └──────────┘     └──────────┘
+
+Admin User Login (from user app):
+┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐
+│  Admin   │────▶│  Login   │────▶│   API    │────▶│ Redirect │
+│  visits  │     │  Page    │     │  /login  │     │   to     │
+│nexprompt │     │          │     │          │     │  admin.  │
+│  .site   │     │          │     │ role:    │     │nexprompt │
+│          │     │          │     │ 'admin'  │     │  .site   │
+└──────────┘     └──────────┘     └──────────┘     └──────────┘
+
+Admin User Login (from admin app):
+┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐
+│  Admin   │────▶│  Admin   │────▶│   API    │────▶│  Admin   │
+│  visits  │     │  Login   │     │  /login  │     │Dashboard │
+│  admin.  │     │  Page    │     │          │     │          │
+│nexprompt │     │          │     │ role:    │     │          │
+│  .site   │     │          │     │ 'admin'  │     │          │
+└──────────┘     └──────────┘     └──────────┘     └──────────┘
+
+Non-Admin tries Admin App:
+┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐
+│  User    │────▶│  Admin   │────▶│   API    │────▶│ Redirect │
+│  visits  │     │  Login   │     │  /login  │     │   to     │
+│  admin.  │     │  Page    │     │          │     │nexprompt │
+│nexprompt │     │          │     │ role:    │     │  .site   │
+│  .site   │     │          │     │ 'user'   │     │/dashboard│
+└──────────┘     └──────────┘     └──────────┘     └──────────┘
+```
+
+## Cross-Domain Navigation
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                   Cross-Domain Link Flow                         │
+└─────────────────────────────────────────────────────────────────┘
+
+User App → Admin App:
+┌──────────────────┐
+│  User Sidebar    │
+│  (nexprompt.site)│
+│                  │
+│  [Admin] button  │────────┐
+│  (if admin user) │        │
+└──────────────────┘        │
+                            │ Full page redirect
+                            │ href={VITE_ADMIN_URL}
+                            │
+                            ▼
+                ┌──────────────────────┐
+                │  Admin Dashboard     │
+                │  (admin.nexprompt    │
+                │   .site/dashboard)   │
+                └──────────────────────┘
+
+Admin App → User App:
+┌──────────────────────┐
+│  Admin Login Page    │
+│  (admin.nexprompt    │
+│   .site/login)       │
+│                      │
+│  [Back to user login]│────────┐
+│  link                │        │
+└──────────────────────┘        │
+                                │ Full page redirect
+                                │ href={VITE_USER_APP_URL}
+                                │
+                                ▼
+                    ┌──────────────────┐
+                    │  User Login      │
+                    │  (nexprompt.site │
+                    │   /login)        │
+                    └──────────────────┘
+```
+
+## Build & Deploy Process
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      Build Process                               │
+└─────────────────────────────────────────────────────────────────┘
+
+Development:
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│  npm run dev │────▶│  Vite Dev    │────▶│ localhost:   │
+│              │     │  Server      │     │   5173       │
+│              │     │              │     │ (User App)   │
+└──────────────┘     └──────────────┘     └──────────────┘
+
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│npm run       │────▶│  Vite Dev    │────▶│ localhost:   │
+│dev:admin     │     │  Server      │     │   5174       │
+│              │     │  (Admin)     │     │ (Admin App)  │
+└──────────────┘     └──────────────┘     └──────────────┘
+
+Production Build:
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│  npm run     │────▶│  Vite Build  │────▶│  dist/       │
+│  build       │     │  (index.html)│     │  (User App)  │
+└──────────────┘     └──────────────┘     └──────────────┘
+
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│  npm run     │────▶│  Vite Build  │────▶│  dist-admin/ │
+│build:admin   │     │  (admin.html)│     │  (Admin App) │
+└──────────────┘     └──────────────┘     └──────────────┘
+
+Deployment:
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│  deploy.sh   │────▶│  Build both  │────▶│  Copy to     │
+│              │     │  apps        │     │  /var/www/   │
+│              │     │              │     │  nexprompt/  │
+└──────────────┘     └──────────────┘     └──────────────┘
+                                                  │
+                                                  │
+                     ┌────────────────────────────┴────────┐
+                     │                                     │
+                     ▼                                     ▼
+          ┌──────────────────┐              ┌──────────────────┐
+          │  client/dist/    │              │client/dist-admin/│
+          │  (User App)      │              │  (Admin App)     │
+          │                  │              │                  │
+          │  Served by Nginx │              │  Served by Nginx │
+          │  at nexprompt    │              │  at admin.       │
+          │  .site           │              │  nexprompt.site  │
+          └──────────────────┘              └──────────────────┘
+```
+
+## Security Layers
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      Security Architecture                       │
+└─────────────────────────────────────────────────────────────────┘
+
+Layer 1: Network
+├─ HTTPS only (SSL/TLS)
+├─ Separate domains (isolation)
+└─ Nginx reverse proxy (no direct backend access)
+
+Layer 2: Nginx
+├─ Rate limiting
+├─ Security headers
+│  ├─ X-Frame-Options: DENY (admin), SAMEORIGIN (user)
+│  ├─ X-Content-Type-Options: nosniff
+│  ├─ X-XSS-Protection: 1; mode=block
+│  └─ CSP: frame-ancestors 'none' (admin only)
+└─ /admin route blocking on user domain
+
+Layer 3: Application
+├─ JWT authentication (access + refresh tokens)
+├─ Role-based access control
+│  ├─ Backend validates user.role === 'admin'
+│  └─ Frontend checks role before rendering
+└─ Cross-domain redirects for unauthorized access
+
+Layer 4: Database
+├─ Parameterized queries (Prisma ORM)
+├─ Password hashing (bcrypt)
+└─ Environment-based credentials
+```
+
+## Data Flow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    API Request Flow                              │
+└─────────────────────────────────────────────────────────────────┘
+
+User makes request:
+┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐
+│  React   │────▶│  Axios   │────▶│  Nginx   │────▶│ Express  │
+│Component │     │  Client  │     │  Proxy   │     │   API    │
+│          │     │          │     │          │     │          │
+│  (User   │     │  + JWT   │     │  /api/*  │     │  Auth    │
+│   or     │     │  Token   │     │          │     │Middleware│
+│  Admin)  │     │          │     │          │     │          │
+└──────────┘     └──────────┘     └──────────┘     └──────────┘
+                                                          │
+                                                          │
+                                                          ▼
+                                                   ┌──────────┐
+                                                   │Controller│
+                                                   │          │
+                                                   │  Route   │
+                                                   │  Handler │
+                                                   └────┬─────┘
+                                                        │
+                                                        ▼
+                                                   ┌──────────┐
+                                                   │  Prisma  │
+                                                   │   ORM    │
+                                                   │          │
+                                                   │  MySQL   │
+                                                   └──────────┘
+
+Response flows back:
+┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐
+│  React   │◀────│  Axios   │◀────│  Nginx   │◀────│ Express  │
+│Component │     │  Client  │     │  Proxy   │     │   API    │
+│          │     │          │     │          │     │          │
+│  Update  │     │  Handle  │     │  Forward │     │  JSON    │
+│   UI     │     │ Response │     │ Response │     │ Response │
+└──────────┘     └──────────┘     └──────────┘     └──────────┘
+```
+
+## Environment Configuration
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                  Environment Variables                           │
+└─────────────────────────────────────────────────────────────────┘
+
+Development:
+┌────────────────────────────────────────────────────────────────┐
+│  client/.env                                                    │
+├────────────────────────────────────────────────────────────────┤
+│  VITE_API_URL=http://localhost:5000                            │
+│  VITE_SOCKET_URL=http://localhost:5000                         │
+│  VITE_ADMIN_URL=http://localhost:5174                          │
+│  VITE_USER_APP_URL=http://localhost:5173                       │
+│  VITE_GOOGLE_CLIENT_ID=...                                     │
+└────────────────────────────────────────────────────────────────┘
+
+Production:
+┌────────────────────────────────────────────────────────────────┐
+│  /var/www/nexprompt/client/.env                                │
+├────────────────────────────────────────────────────────────────┤
+│  VITE_API_URL=https://nexprompt.site                           │
+│  VITE_SOCKET_URL=https://nexprompt.site                        │
+│  VITE_ADMIN_URL=https://admin.nexprompt.site                   │
+│  VITE_USER_APP_URL=https://nexprompt.site                      │
+│  VITE_GOOGLE_CLIENT_ID=...                                     │
+└────────────────────────────────────────────────────────────────┘
+
+Note: Vite reads these at BUILD TIME, not runtime!
+```
+
+## Summary
+
+- **Two separate domains** for user and admin interfaces
+- **Shared backend API** at 127.0.0.1:5000
+- **Nginx reverse proxy** handles routing and SSL
+- **JWT authentication** with role-based access control
+- **Cross-domain navigation** using environment variables
+- **Separate builds** for optimal bundle sizes
+- **Enhanced security** with stricter headers for admin app
