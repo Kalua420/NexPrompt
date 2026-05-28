@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Users, FileText, CreditCard, Settings, Activity,
   Trash2, Edit3, X, Check, Search, Plus, Shield, ShieldOff,
-  Menu, ArrowLeft, LogOut, User, Mail, Calendar, Globe, Key,
+  Menu, LogOut, User, Mail, Calendar, Globe, Key,
   Camera, Eye, EyeOff, BarChart3, Clock, AlertCircle, Copy,
   CheckCircle, XCircle, Hash, Link as LinkIcon,
 } from 'lucide-react';
@@ -99,15 +99,6 @@ export default function Admin({ section }) {
           <span className="text-text capitalize">{activeNav}</span>
         </span>
         <div className="ml-auto flex items-center gap-3">
-          <button
-            onClick={() => { 
-              const userAppUrl = import.meta.env.VITE_USER_APP_URL || 'https://nexprompt.site';
-              window.location.href = `${userAppUrl}/dashboard`;
-            }}
-            className="flex items-center gap-1.5 text-xs text-text/40 hover:text-text transition-colors"
-          >
-            <ArrowLeft size={14} /> Back to app
-          </button>
           <span className="text-xs text-text/30">{user?.email}</span>
           <button
             onClick={async () => {

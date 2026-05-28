@@ -111,31 +111,52 @@ export default function Workspace() {
 
     const convId = location.state?.conversationId || localStorage.getItem('currentConversationId');
     
-    // Get auth token for Socket.IO
-    const token = useAuthStore.getState().accessToken;
-    const s = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000', {
-      auth: { token },
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+    const authToken = useAuthStore.getState().accessToken;
+    
+    console.log('🔌 Attempting to connect to:', socketUrl);
+    console.log('🔑 Socket auth token:', authToken ? `Present (${authToken.substring(0, 20)}...)` : 'Missing');
+    
+    if (!authToken) {
+      console.error('❌ No access token available. User might need to log in again.');
+      setToast({ message: 'Authentication required. Please log in again.', visible: true, type: 'error' });
+      setInitialLoading(false);
+      return;
+    }
+    
+    const s = io(socketUrl, {
+      auth: { token: authToken },
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      reconnectionAttempts: 5
+      reconnectionAttempts: 5,
+      transports: ['websocket', 'polling'],
     });
     
     // Socket connection handlers
     s.on('connect', () => {
+      console.log('✅ Socket connected successfully');
       setSocketConnected(true);
       setToast({ message: 'Connected', visible: true, type: 'success' });
     });
 
     s.on('disconnect', () => {
+      console.log('❌ Socket disconnected');
       setSocketConnected(false);
       setToast({ message: 'Disconnected from server', visible: true, type: 'error' });
     });
 
     s.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
+      console.error('❌ Socket connection error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        description: error.description,
+        context: error.context,
+        type: error.type
+      });
+      console.error('Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
       setSocketConnected(false);
-      setToast({ message: 'Connection error. Retrying...', visible: true, type: 'error' });
+      setToast({ message: `Connection error: ${error.message}`, visible: true, type: 'error' });
     });
 
     s.on('reconnect', () => {
@@ -751,6 +772,12 @@ export default function Workspace() {
               </div>
             </div>
             <div className="p-4 md:px-8">
+              {!socketConnected && (
+                <div className="mb-3 px-4 py-2 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-yellow-500 text-sm flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+                  <span>Connecting to server... Please wait.</span>
+                </div>
+              )}
               <div className="flex gap-3 items-end">
                 <textarea
                   ref={textareaRef}
@@ -778,6 +805,14 @@ export default function Workspace() {
                     disabled={!content.trim() || !provider || !currentConversation || sendingPrompt || !socketConnected}
                     className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center hover:bg-accent transition-colors disabled:opacity-30 shadow-lg shadow-primary/20 shrink-0"
                     aria-label="Send prompt"
+                    title={
+                      !socketConnected ? 'Connecting to server...' :
+                      !content.trim() ? 'Enter a prompt' :
+                      !provider ? 'Select a provider' :
+                      !currentConversation ? 'Create a conversation' :
+                      sendingPrompt ? 'Sending...' :
+                      'Send prompt'
+                    }
                   >
                     <Send size={18} className="text-white" />
                   </button>

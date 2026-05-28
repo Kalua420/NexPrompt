@@ -91,15 +91,6 @@ export default function AdminLogin() {
           Sign in as Admin
         </Button>
 
-        <div className="text-center text-sm text-text/50">
-          <a
-            href={(import.meta.env.VITE_USER_APP_URL || 'https://nexprompt.site') + '/login'}
-            className="inline-flex items-center gap-1.5 hover:text-accent transition-colors"
-          >
-            <ArrowLeft size={14} />
-            Back to user login
-          </a>
-        </div>
       </motion.form>
     </div>
   );

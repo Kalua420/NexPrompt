@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, Zap, Circle, Star, CreditCard, Settings, Shield, Sparkles, Crown, UserCircle } from 'lucide-react';
+import { LayoutDashboard, Zap, Circle, Star, CreditCard, Settings, Sparkles, Crown, UserCircle } from 'lucide-react';
 import { useUiStore } from '../stores/uiStore.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useTier } from '../hooks/useTier.js';
@@ -65,15 +65,6 @@ export default function Sidebar() {
         );
       })}
 
-      {user?.role === 'admin' && (
-        <a
-          href={import.meta.env.VITE_ADMIN_URL || 'https://admin.nexprompt.site/dashboard'}
-          className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 group text-text/50 hover:text-text hover:bg-white/[0.04]"
-        >
-          <Shield size={18} className="group-hover:text-text transition-colors" />
-          Admin
-        </a>
-      )}
       
       <CreditDisplay />
       

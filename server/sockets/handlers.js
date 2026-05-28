@@ -27,7 +27,7 @@ const RATE_LIMIT_MAX = 10;
 async function checkRateLimit(userId) {
   const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MS);
   const count = await prisma.generation.count({
-    where: { userId, createdAt: { gte: windowStart } },
+    where: { prompt: { userId }, createdAt: { gte: windowStart } },
   });
   return count < RATE_LIMIT_MAX;
 }

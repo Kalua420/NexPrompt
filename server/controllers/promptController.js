@@ -57,6 +57,7 @@ export async function getPrompts(req, res, next) {
 }
 
 export async function getPrompt(req, res, next) {
+  try {
   const prompt = await prisma.prompt.findFirst({
     where: { id: req.params.id, userId: req.user.userId },
     include: { generations: { orderBy: { createdAt: 'desc' } } },
@@ -67,6 +68,7 @@ export async function getPrompt(req, res, next) {
 }
 
 export async function createPrompt(req, res, next) {
+  try {
   const { title, content, useCase, conversationId } = req.body;
   if (!title || !content) return res.status(400).json({ error: 'Title and content required' });
   if (typeof title !== 'string' || title.length > 500) return res.status(400).json({ error: 'Title must be under 500 characters' });
@@ -89,6 +91,7 @@ export async function createPrompt(req, res, next) {
 }
 
 export async function deletePrompt(req, res, next) {
+  try {
   const prompt = await prisma.prompt.findFirst({ where: { id: req.params.id, userId: req.user.userId } });
   if (!prompt) return res.status(404).json({ error: 'Prompt not found' });
   await prisma.prompt.delete({ where: { id: prompt.id } });

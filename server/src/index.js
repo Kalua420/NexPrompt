@@ -35,25 +35,37 @@ if (process.env.JWT_SECRET.length < 32 || process.env.JWT_REFRESH_SECRET.length 
   console.warn('WARNING: JWT secrets should be at least 32 characters long for security');
 }
 
-export const prisma = new PrismaClient();
-
-// Prisma middleware: soft-delete enforcement
+const _prisma = new PrismaClient();
 const SOFT_DELETE_MODELS = ['User', 'Conversation', 'Prompt', 'Template'];
-prisma.$use(async (params, next) => {
-  if (SOFT_DELETE_MODELS.includes(params.model)) {
-    if (params.action === 'findMany' || params.action === 'findFirst') {
-      params.args.where = { deletedAt: null, ...params.args.where };
-    }
-    if (params.action === 'delete') {
-      params.action = 'update';
-      params.args.data = { deletedAt: new Date() };
-    }
-    if (params.action === 'deleteMany') {
-      params.action = 'updateMany';
-      params.args.data = { deletedAt: new Date() };
-    }
-  }
-  return next(params);
+
+export const prisma = _prisma.$extends({
+  query: {
+    $allModels: {
+      async $allOperations({ model, operation, args, query }) {
+        if (SOFT_DELETE_MODELS.includes(model)) {
+          if (operation === 'findMany' || operation === 'findFirst') {
+            args.where = { deletedAt: null, ...args.where };
+            return query(args);
+          }
+          if (operation === 'delete') {
+            const prop = model[0].toLowerCase() + model.slice(1);
+            return _prisma[prop].update({
+              where: args.where,
+              data: { deletedAt: new Date() },
+            });
+          }
+          if (operation === 'deleteMany') {
+            const prop = model[0].toLowerCase() + model.slice(1);
+            return _prisma[prop].updateMany({
+              where: args.where,
+              data: { deletedAt: new Date() },
+            });
+          }
+        }
+        return query(args);
+      },
+    },
+  },
 });
 
 const app = express();
