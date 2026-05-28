@@ -3,23 +3,24 @@
 // Run with: node create_admin.js
 // ============================================================================
 
+import 'dotenv/config';
 import bcrypt from 'bcryptjs';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-async function createAdminUsers() {
-  console.log('🔐 Creating admin users...\n');
+async function createUsers() {
+  console.log('🔐 Creating users...\n');
 
   try {
-    // Admin 1
-    const admin1Password = 'Admin@123';
-    const admin1Hash = await bcrypt.hash(admin1Password, 10);
-    
-    const admin1 = await prisma.user.upsert({
+    // ── Admin user ──────────────────────────────────────────────────────────
+    const adminPassword = 'Admin@123';
+    const adminHash = await bcrypt.hash(adminPassword, 10);
+
+    const admin = await prisma.user.upsert({
       where: { email: 'admin@nexprompt.site' },
       update: {
-        passwordHash: admin1Hash,
+        passwordHash: adminHash,
         role: 'admin',
         emailVerified: true,
         termsAcceptedAt: new Date(),
@@ -27,99 +28,91 @@ async function createAdminUsers() {
       },
       create: {
         id: 'admin_001',
-        name: 'Admin User',
+        name: 'Admin',
         email: 'admin@nexprompt.site',
-        passwordHash: admin1Hash,
+        passwordHash: adminHash,
         role: 'admin',
         emailVerified: true,
         termsAcceptedAt: new Date(),
         privacyAcceptedAt: new Date(),
-      },
-    });
-
-    console.log('✅ Admin 1 created:');
-    console.log('   Email:', admin1.email);
-    console.log('   Password:', admin1Password);
-    console.log('   ID:', admin1.id);
-    console.log('');
-
-    // Admin 2
-    const admin2Password = 'SuperAdmin@123';
-    const admin2Hash = await bcrypt.hash(admin2Password, 10);
-    
-    const admin2 = await prisma.user.upsert({
-      where: { email: 'superadmin@nexprompt.site' },
-      update: {
-        passwordHash: admin2Hash,
-        role: 'admin',
-        emailVerified: true,
-        termsAcceptedAt: new Date(),
-        privacyAcceptedAt: new Date(),
-      },
-      create: {
-        id: 'admin_002',
-        name: 'Super Admin',
-        email: 'superadmin@nexprompt.site',
-        passwordHash: admin2Hash,
-        role: 'admin',
-        emailVerified: true,
-        termsAcceptedAt: new Date(),
-        privacyAcceptedAt: new Date(),
-      },
-    });
-
-    console.log('✅ Admin 2 created:');
-    console.log('   Email:', admin2.email);
-    console.log('   Password:', admin2Password);
-    console.log('   ID:', admin2.id);
-    console.log('');
-
-    // Create credit balances
-    await prisma.creditBalance.upsert({
-      where: { userId: admin1.id },
-      update: { credits: 1000 },
-      create: {
-        userId: admin1.id,
-        credits: 1000,
       },
     });
 
     await prisma.creditBalance.upsert({
-      where: { userId: admin2.id },
+      where: { userId: admin.id },
       update: { credits: 1000 },
-      create: {
-        userId: admin2.id,
-        credits: 1000,
-      },
+      create: { userId: admin.id, credits: 1000 },
     });
 
-    console.log('✅ Credit balances created (1000 credits each)\n');
-
-    // Summary
-    console.log('═══════════════════════════════════════════════════');
-    console.log('📋 ADMIN CREDENTIALS SUMMARY');
-    console.log('═══════════════════════════════════════════════════');
-    console.log('');
-    console.log('👤 Admin 1:');
+    console.log('✅ Admin user created:');
     console.log('   Email:    admin@nexprompt.site');
     console.log('   Password: Admin@123');
+    console.log('   Role:     admin');
     console.log('   Credits:  1000');
-    console.log('');
-    console.log('👤 Admin 2:');
-    console.log('   Email:    superadmin@nexprompt.site');
-    console.log('   Password: SuperAdmin@123');
-    console.log('   Credits:  1000');
-    console.log('');
-    console.log('═══════════════════════════════════════════════════');
-    console.log('✅ Admin users created successfully!');
     console.log('');
 
+    // ── Test user ───────────────────────────────────────────────────────────
+    const testPassword = 'Test@123';
+    const testHash = await bcrypt.hash(testPassword, 10);
+
+    const testUser = await prisma.user.upsert({
+      where: { email: 'test@nexprompt.site' },
+      update: {
+        passwordHash: testHash,
+        role: 'user',
+        emailVerified: true,
+        termsAcceptedAt: new Date(),
+        privacyAcceptedAt: new Date(),
+      },
+      create: {
+        id: 'test_001',
+        name: 'Test User',
+        email: 'test@nexprompt.site',
+        passwordHash: testHash,
+        role: 'user',
+        emailVerified: true,
+        termsAcceptedAt: new Date(),
+        privacyAcceptedAt: new Date(),
+      },
+    });
+
+    await prisma.creditBalance.upsert({
+      where: { userId: testUser.id },
+      update: { credits: 100 },
+      create: { userId: testUser.id, credits: 100 },
+    });
+
+    console.log('✅ Test user created:');
+    console.log('   Email:    test@nexprompt.site');
+    console.log('   Password: Test@123');
+    console.log('   Role:     user');
+    console.log('   Credits:  100');
+    console.log('');
+
+    // ── Summary ─────────────────────────────────────────────────────────────
+    console.log('═══════════════════════════════════════════════════');
+    console.log('📋 CREDENTIALS SUMMARY');
+    console.log('═══════════════════════════════════════════════════');
+    console.log('');
+    console.log('👤 Admin:');
+    console.log('   Email:    admin@nexprompt.site');
+    console.log('   Password: Admin@123');
+    console.log('   Role:     admin');
+    console.log('');
+    console.log('👤 Test User:');
+    console.log('   Email:    test@nexprompt.site');
+    console.log('   Password: Test@123');
+    console.log('   Role:     user');
+    console.log('');
+    console.log('═══════════════════════════════════════════════════');
+    console.log('✅ Done!');
+
   } catch (error) {
-    console.error('❌ Error creating admin users:', error);
+    console.error('❌ Error creating users:', error);
     process.exit(1);
   } finally {
     await prisma.$disconnect();
   }
 }
 
-createAdminUsers();
+createUsers();

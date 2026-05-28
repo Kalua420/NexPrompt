@@ -528,7 +528,7 @@ export async function getApiKeyUsageLogs(req, res) {
       }),
       prisma.prompt.findMany({
         where: { id: { in: promptIds } },
-        select: { id: true, title: true, useCase: true, provider: true, tokensUsed: true, createdAt: true },
+        select: { id: true, title: true, useCase: true, createdAt: true },
       }),
     ]);
 

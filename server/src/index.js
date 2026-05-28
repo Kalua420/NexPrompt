@@ -37,6 +37,9 @@ export const prisma = new PrismaClient();
 const app = express();
 const httpServer = createServer(app);
 
+// Trust Nginx reverse proxy — required for correct IP in rate limiting and logs
+app.set('trust proxy', 1);
+
 const allowedOrigins = process.env.CLIENT_URL
   ? process.env.CLIENT_URL.split(',').map(url => url.trim())
   : ['http://localhost:5173', 'http://127.0.0.1:5173'];
