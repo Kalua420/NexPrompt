@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { Eye, EyeOff, MailCheck } from 'lucide-react';
@@ -43,13 +43,35 @@ export default function Login() {
   const [loading,  setLoading]  = useState(false);
   const [unverifiedEmail, setUnverifiedEmail] = useState('');
   const login    = useAuthStore((s) => s.login);
+  const user     = useAuthStore((s) => s.user);
   const navigate = useNavigate();
+
+  // Already logged in — send to the right place
+  useEffect(() => {
+    if (!user) return;
+    if (user.role === 'admin') {
+      // Admin accidentally on user login page → send to admin app
+      window.location.replace(
+        import.meta.env.VITE_ADMIN_URL || 'http://localhost:5174'
+      );
+    } else {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(''); setUnverifiedEmail(''); setLoading(true);
     try {
       const { data } = await api.post('/api/auth/login', { email, password });
+      if (data.user.role === 'admin') {
+        // Admin logged in via user login page → store session then redirect to admin app
+        login(data.user, data.accessToken, data.refreshToken);
+        window.location.replace(
+          import.meta.env.VITE_ADMIN_URL || 'http://localhost:5174'
+        );
+        return;
+      }
       login(data.user, data.accessToken, data.refreshToken);
       navigate('/dashboard');
     } catch (err) {

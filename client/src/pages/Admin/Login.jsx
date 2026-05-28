@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, Shield, ArrowLeft } from 'lucide-react';
@@ -14,7 +14,21 @@ export default function AdminLogin() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const login = useAuthStore((s) => s.login);
+  const user  = useAuthStore((s) => s.user);
   const navigate = useNavigate();
+
+  // Already logged in as admin → go straight to dashboard
+  useEffect(() => {
+    if (!user) return;
+    if (user.role === 'admin') {
+      navigate('/dashboard', { replace: true });
+    } else {
+      // Non-admin somehow on admin login page → send back to user app
+      window.location.replace(
+        import.meta.env.VITE_USER_APP_URL || 'https://nexprompt.site/login'
+      );
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
