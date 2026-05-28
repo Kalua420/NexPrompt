@@ -12,7 +12,7 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
-    host: 'admin.localhost',
+    port: 5174,
+    host: 'localhost',
   },
 });
