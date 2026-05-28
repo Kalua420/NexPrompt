@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
-import { Eye, EyeOff, Shield, MailCheck } from 'lucide-react';
+import { Eye, EyeOff, MailCheck } from 'lucide-react';
 import Button from '../../components/Button.jsx';
 import ErrorMessage from '../../components/ErrorMessage.jsx';
 import GoogleAuthButton from '../../components/GoogleAuthButton.jsx';
@@ -128,15 +128,6 @@ export default function Login() {
         {/* Social */}
         <div style={{ display: 'flex', gap: 12 }}>
           <GoogleAuthButton onError={(msg) => setError(msg)} />
-        </div>
-
-        {/* Admin link */}
-        <div style={{ textAlign: 'center', paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-          <Link to="/admin/login" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'rgba(228,225,233,0.2)', textDecoration: 'none', transition: 'color .15s' }}
-            onMouseEnter={e => e.currentTarget.style.color = 'rgba(228,225,233,0.5)'}
-            onMouseLeave={e => e.currentTarget.style.color = 'rgba(228,225,233,0.2)'}>
-            <Shield size={12} /> Admin login
-          </Link>
         </div>
       </form>
     </AuthLayout>
