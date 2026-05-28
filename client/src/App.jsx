@@ -19,31 +19,44 @@ const Subscription = lazy(() => import('./pages/Subscription/Subscription.jsx'))
 const Terms = lazy(() => import('./pages/Legal/Terms.jsx'));
 const Privacy = lazy(() => import('./pages/Legal/Privacy.jsx'));
 
-export default function App() {
+const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+function AppRoutes() {
   return (
-    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || ''}>
-      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <Suspense fallback={<div className="flex items-center justify-center h-screen bg-bg text-text">Loading...</div>}>
-          <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/verify-email" element={<VerifyEmail />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/workspace" element={<Workspace />} />
-            <Route path="/templates" element={<Templates />} />
-            <Route path="/favorites" element={<Favorites />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/credits" element={<Credits />} />
-            <Route path="/subscription" element={<Subscription />} />
-            <Route path="/legal/terms" element={<Terms />} />
-            <Route path="/legal/privacy" element={<Privacy />} />
-          </Routes>
-        </Suspense>
-      </BrowserRouter>
-    </GoogleOAuthProvider>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <Suspense fallback={<div className="flex items-center justify-center h-screen bg-bg text-text">Loading...</div>}>
+        <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/workspace" element={<Workspace />} />
+          <Route path="/templates" element={<Templates />} />
+          <Route path="/favorites" element={<Favorites />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/credits" element={<Credits />} />
+          <Route path="/subscription" element={<Subscription />} />
+          <Route path="/legal/terms" element={<Terms />} />
+          <Route path="/legal/privacy" element={<Privacy />} />
+        </Routes>
+      </Suspense>
+    </BrowserRouter>
   );
+}
+
+export default function App() {
+  // Only wrap with GoogleOAuthProvider if a client ID is configured.
+  // Passing an empty string crashes the entire app.
+  if (googleClientId) {
+    return (
+      <GoogleOAuthProvider clientId={googleClientId}>
+        <AppRoutes />
+      </GoogleOAuthProvider>
+    );
+  }
+  return <AppRoutes />;
 }
