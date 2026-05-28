@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, Shield, ArrowLeft } from 'lucide-react';
 import Button from '../../components/Button.jsx';
@@ -28,7 +28,7 @@ export default function AdminLogin() {
         return;
       }
       login(data.user, data.accessToken, data.refreshToken);
-      navigate('/admin');
+      navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed');
     } finally {
@@ -82,10 +82,13 @@ export default function AdminLogin() {
         </Button>
 
         <div className="text-center text-sm text-text/50">
-          <Link to="/login" className="inline-flex items-center gap-1.5 hover:text-accent transition-colors">
+          <a
+            href={import.meta.env.VITE_USER_APP_URL || 'https://nexprompt.site/login'}
+            className="inline-flex items-center gap-1.5 hover:text-accent transition-colors"
+          >
             <ArrowLeft size={14} />
             Back to user login
-          </Link>
+          </a>
         </div>
       </motion.form>
     </div>

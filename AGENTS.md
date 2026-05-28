@@ -3,8 +3,11 @@
 ## Quick start
 
 ```bash
-# Frontend (port 5173)
+# Frontend — user app (port 5173)
 cd client && npm i && npm run dev
+
+# Frontend — admin app (port 5174)
+cd client && npm run dev:admin
 
 # Backend (port 5000) — MySQL required
 cd server && npm i && npx prisma db push && npm run dev
@@ -12,6 +15,26 @@ cd server && npm i && npx prisma db push && npm run dev
 # Prisma seed (optional)
 cd server && npm run seed
 ```
+
+## Production deployment (VPS)
+
+See `deploy/` for all deployment files:
+
+| File | Purpose |
+|---|---|
+| `deploy/first-time-setup.sh` | Run once on a fresh Ubuntu VPS as root |
+| `deploy/deploy.sh` | Run on every subsequent deploy |
+| `deploy/ecosystem.config.cjs` | PM2 process config for the API server |
+| `deploy/nginx/nexprompt.site.conf` | Nginx vhost for user app |
+| `deploy/nginx/admin.nexprompt.site.conf` | Nginx vhost for admin app |
+| `deploy/env.server.production` | Template for `server/.env` on VPS |
+| `deploy/env.client.production` | Template for `client/.env` on VPS |
+
+**Architecture on VPS:**
+- Nginx serves `client/dist/` at `nexprompt.site`
+- Nginx serves `client/dist-admin/` at `admin.nexprompt.site`
+- Both domains proxy `/api/` and `/socket.io/` to `127.0.0.1:5000`
+- Express API runs as a PM2 process (never exposed directly)
 
 ## Project layout
 

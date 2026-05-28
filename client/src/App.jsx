@@ -16,8 +16,6 @@ const Settings = lazy(() => import('./pages/Settings/Settings.jsx'));
 const Profile = lazy(() => import('./pages/Profile/Profile.jsx'));
 const Credits = lazy(() => import('./pages/Credits/Credits.jsx'));
 const Subscription = lazy(() => import('./pages/Subscription/Subscription.jsx'));
-const AdminLogin = lazy(() => import('./pages/Admin/Login.jsx'));
-const Admin = lazy(() => import('./pages/Admin/Admin.jsx'));
 const Terms = lazy(() => import('./pages/Legal/Terms.jsx'));
 const Privacy = lazy(() => import('./pages/Legal/Privacy.jsx'));
 
@@ -41,8 +39,6 @@ export default function App() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/credits" element={<Credits />} />
             <Route path="/subscription" element={<Subscription />} />
-            <Route path="/admin/login" element={<AdminLogin />} />
-            <Route path="/admin" element={<Admin />} />
             <Route path="/legal/terms" element={<Terms />} />
             <Route path="/legal/privacy" element={<Privacy />} />
           </Routes>
