@@ -11,5 +11,8 @@ export default defineConfig({
       input: 'admin.html',
     },
   },
-  server: { port: 5174 },
+  server: {
+    port: 5173,
+    host: 'admin.localhost',
+  },
 });
