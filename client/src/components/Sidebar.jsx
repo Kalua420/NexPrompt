@@ -66,15 +66,23 @@ export default function Sidebar() {
       })}
 
       {user?.role === 'admin' && (
-        <a
-          href={import.meta.env.VITE_ADMIN_URL || 'http://localhost:5174'}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 group text-text/50 hover:text-text hover:bg-white/[0.04]"
+        <NavLink
+          to="/admin/dashboard"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 group ${isActive ? 'bg-accent/15 text-accent' : 'text-text/50 hover:text-text hover:bg-white/[0.04]'}`
+          }
         >
-          <Shield size={18} className="group-hover:text-text transition-colors" />
-          Admin
-        </a>
+          {({ isActive }) => (
+            <>
+              <Shield size={18} className={isActive ? 'text-accent' : 'group-hover:text-text transition-colors'} />
+              Admin
+              {isActive && (
+                <motion.div layoutId="sidebar-active" className="ml-auto w-1.5 h-1.5 rounded-full bg-accent"
+                  transition={{ type: 'spring', stiffness: 300, damping: 25 }} />
+              )}
+            </>
+          )}
+        </NavLink>
       )}
       
       <CreditDisplay />

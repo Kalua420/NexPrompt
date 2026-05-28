@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, Shield, ArrowLeft } from 'lucide-react';
 import Button from '../../components/Button.jsx';
@@ -21,12 +21,9 @@ export default function AdminLogin() {
   useEffect(() => {
     if (!user) return;
     if (user.role === 'admin') {
-      navigate('/dashboard', { replace: true });
+      navigate('/admin/dashboard', { replace: true });
     } else {
-      // Non-admin somehow on admin login page → send back to user app
-      window.location.replace(
-        import.meta.env.VITE_USER_APP_URL || 'https://nexprompt.site/login'
-      );
+      navigate('/dashboard', { replace: true });
     }
   }, [user, navigate]);
 
@@ -42,7 +39,7 @@ export default function AdminLogin() {
         return;
       }
       login(data.user, data.accessToken, data.refreshToken);
-      navigate('/dashboard');
+      navigate('/admin/dashboard');
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed');
     } finally {
@@ -96,13 +93,13 @@ export default function AdminLogin() {
         </Button>
 
         <div className="text-center text-sm text-text/50">
-          <a
-            href={import.meta.env.VITE_USER_APP_URL || 'https://nexprompt.site/login'}
+          <Link
+            to="/login"
             className="inline-flex items-center gap-1.5 hover:text-accent transition-colors"
           >
             <ArrowLeft size={14} />
             Back to user login
-          </a>
+          </Link>
         </div>
       </motion.form>
     </div>

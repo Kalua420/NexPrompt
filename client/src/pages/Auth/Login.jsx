@@ -50,10 +50,7 @@ export default function Login() {
   useEffect(() => {
     if (!user) return;
     if (user.role === 'admin') {
-      // Admin accidentally on user login page → send to admin app
-      window.location.replace(
-        import.meta.env.VITE_ADMIN_URL || 'http://localhost:5174'
-      );
+      navigate('/admin/dashboard', { replace: true });
     } else {
       navigate('/dashboard', { replace: true });
     }
@@ -65,11 +62,8 @@ export default function Login() {
     try {
       const { data } = await api.post('/api/auth/login', { email, password });
       if (data.user.role === 'admin') {
-        // Admin logged in via user login page → store session then redirect to admin app
         login(data.user, data.accessToken, data.refreshToken);
-        window.location.replace(
-          import.meta.env.VITE_ADMIN_URL || 'http://localhost:5174'
-        );
+        navigate('/admin/dashboard');
         return;
       }
       login(data.user, data.accessToken, data.refreshToken);

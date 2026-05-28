@@ -53,12 +53,11 @@ export default function Admin() {
 
   useEffect(() => {
     if (!user) {
-      navigate('/login');
+      navigate('/admin/login');
       return;
     }
     if (user.role !== 'admin') {
-      // Non-admin users get redirected to the main app
-      window.location.href = import.meta.env.VITE_USER_APP_URL || 'https://nexprompt.site/dashboard';
+      navigate('/dashboard');
     }
   }, [user, navigate]);
 
