@@ -14,7 +14,8 @@ async function createUsers() {
 
   try {
     // ── Admin user ──────────────────────────────────────────────────────────
-    const adminPassword = 'Admin@123';
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    if (!adminPassword) throw new Error('ADMIN_PASSWORD env var is required');
     const adminHash = await bcrypt.hash(adminPassword, 10);
 
     const admin = await prisma.user.upsert({
@@ -52,7 +53,7 @@ async function createUsers() {
     console.log('');
 
     // ── Test user ───────────────────────────────────────────────────────────
-    const testPassword = 'Test@123';
+    const testPassword = process.env.TEST_PASSWORD || 'Test@123';
     const testHash = await bcrypt.hash(testPassword, 10);
 
     const testUser = await prisma.user.upsert({

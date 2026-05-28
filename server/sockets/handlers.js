@@ -1,7 +1,7 @@
 import { prisma } from '../src/index.js';
 import { promptEngine } from '../services/promptEngine.js';
 import { getProvider } from '../services/ai/aiManager.js';
-import { getCreditCost, hasEnoughCredits, deductCredits, getCreditBalance } from '../services/creditService.js';
+import { getCreditCost, deductCredits, getCreditBalance } from '../services/creditService.js';
 import { checkEntitlement } from '../services/subscriptionService.js';
 
 /**
@@ -19,29 +19,17 @@ function mergeAnswersIntoContent(content, answers) {
 }
 
 const activeGenerations = new Map();
-const userRateLimits = new Map(); // Track generation counts per user
 
 // Rate limiting: max 10 generations per minute per user
-const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX = 10;
 
-function checkRateLimit(userId) {
-  const now = Date.now();
-  const userLimits = userRateLimits.get(userId) || { count: 0, resetAt: now + RATE_LIMIT_WINDOW };
-  
-  if (now > userLimits.resetAt) {
-    // Reset window
-    userRateLimits.set(userId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
-    return true;
-  }
-  
-  if (userLimits.count >= RATE_LIMIT_MAX) {
-    return false;
-  }
-  
-  userLimits.count++;
-  userRateLimits.set(userId, userLimits);
-  return true;
+async function checkRateLimit(userId) {
+  const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MS);
+  const count = await prisma.generation.count({
+    where: { userId, createdAt: { gte: windowStart } },
+  });
+  return count < RATE_LIMIT_MAX;
 }
 
 export function setupSocketHandlers(io) {
@@ -67,8 +55,8 @@ export function setupSocketHandlers(io) {
           return;
         }
 
-        // Check rate limit
-        if (!checkRateLimit(userId)) {
+        // Check rate limit (DB-backed, cluster-safe)
+        if (!(await checkRateLimit(userId))) {
           socket.emit('error', { error: 'Rate limit exceeded. Please wait before generating again.' });
           return;
         }
@@ -111,23 +99,8 @@ export function setupSocketHandlers(io) {
           return;
         }
 
-        // Check credit balance
+        // Get credit cost for later atomic deduction
         creditCost = getCreditCost(selectedProvider);
-        const hasCredits = await hasEnoughCredits(userId, creditCost);
-        
-        if (!hasCredits) {
-          const currentBalance = await getCreditBalance(userId);
-          socket.emit('error', {
-            error: 'Insufficient credits',
-            code: 'INSUFFICIENT_CREDITS',
-            balance: currentBalance,
-            required: creditCost,
-            provider: selectedProvider,
-          });
-          return;
-        }
-        
-        // Mark for credit deduction after successful generation
         needsCreditDeduction = true;
 
         const controller = new AbortController();

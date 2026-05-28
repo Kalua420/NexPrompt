@@ -21,6 +21,14 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const PASSWORD_RE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
 
+const COOKIE_OPTS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'strict',
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+  path: '/api/auth',
+};
+
 function validatePassword(password) {
   if (typeof password !== 'string' || password.length < 8) {
     return 'Password must be at least 8 characters';
@@ -118,6 +126,7 @@ export async function verifyEmail(req, res) {
 
   const accessToken = generateAccessToken(user.id, user.role);
   const refreshToken = await generateRefreshToken(user.id);
+  res.cookie('refreshToken', refreshToken, COOKIE_OPTS);
 
   res.json({
     message: 'Email verified successfully.',
@@ -168,6 +177,7 @@ export async function login(req, res) {
 
   const accessToken = generateAccessToken(user.id, user.role);
   const refreshToken = await generateRefreshToken(user.id);
+  res.cookie('refreshToken', refreshToken, COOKIE_OPTS);
   res.json({
     user: {
       id: user.id, name: user.name, email: user.email, avatar: user.avatar, role: user.role,
@@ -191,6 +201,7 @@ export async function adminLogin(req, res) {
   }
   const accessToken = generateAccessToken(user.id, user.role);
   const refreshToken = await generateRefreshToken(user.id);
+  res.cookie('refreshToken', refreshToken, COOKIE_OPTS);
   res.json({
     user: { id: user.id, name: user.name, email: user.email, avatar: user.avatar, role: user.role },
     accessToken, refreshToken,
@@ -207,7 +218,7 @@ export async function me(req, res) {
 }
 
 export async function refreshToken(req, res) {
-  const { refreshToken: token } = req.body;
+  const token = req.cookies.refreshToken || req.body.refreshToken;
   if (!token) return res.status(400).json({ error: 'Refresh token required' });
   try {
     const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
@@ -222,6 +233,7 @@ export async function refreshToken(req, res) {
     if (!user) return res.status(401).json({ error: 'User not found' });
     const accessToken = generateAccessToken(user.id, user.role);
     const newRefreshToken = await generateRefreshToken(user.id);
+    res.cookie('refreshToken', newRefreshToken, COOKIE_OPTS);
     res.json({ accessToken, refreshToken: newRefreshToken });
   } catch {
     res.status(401).json({ error: 'Invalid or expired refresh token' });
@@ -229,11 +241,12 @@ export async function refreshToken(req, res) {
 }
 
 export async function logout(req, res) {
-  const { refreshToken } = req.body;
-  if (refreshToken) {
-    const hash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+  const token = req.cookies.refreshToken || req.body.refreshToken;
+  if (token) {
+    const hash = crypto.createHash('sha256').update(token).digest('hex');
     await prisma.refreshToken.deleteMany({ where: { tokenHash: hash } }).catch(() => {});
   }
+  res.clearCookie('refreshToken', { path: '/api/auth' });
   res.json({ message: 'Logged out' });
 }
 
@@ -336,20 +349,18 @@ export async function updateProfile(req, res) {
       data.name = name.trim();
     }
 
-    // Avatar update — accept a data URL (base64) or a plain https URL, or null to clear
+    // Avatar update — accept https URLs only; reject base64 data URLs
     if (avatar !== undefined) {
       if (avatar === null || avatar === '') {
         data.avatar = null;
       } else if (typeof avatar === 'string') {
-        // Allow data URLs (base64 images) up to ~2 MB and plain https URLs
-        if (avatar.startsWith('data:image/')) {
-          const base64Part = avatar.split(',')[1] || '';
-          const sizeBytes = Math.ceil((base64Part.length * 3) / 4);
-          if (sizeBytes > 2 * 1024 * 1024) {
-            return res.status(400).json({ error: 'Avatar image must be under 2 MB' });
-          }
-        } else if (!avatar.startsWith('https://') && !avatar.startsWith('http://')) {
-          return res.status(400).json({ error: 'Invalid avatar URL' });
+        if (avatar.startsWith('data:')) {
+          return res.status(400).json({
+            error: 'Base64 image uploads are not supported. Upload the image to object storage and provide the URL.',
+          });
+        }
+        if (!avatar.startsWith('https://')) {
+          return res.status(400).json({ error: 'Avatar must be an https:// URL' });
         }
         data.avatar = avatar;
       }
@@ -486,6 +497,7 @@ export async function googleAuth(req, res) {
 
   const accessToken = generateAccessToken(user.id, user.role);
   const refreshToken = await generateRefreshToken(user.id);
+  res.cookie('refreshToken', refreshToken, COOKIE_OPTS);
 
   res.json({
     user: {

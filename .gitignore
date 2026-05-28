@@ -4,3 +4,5 @@ dist-admin/
 .env
 *.log
 .DS_Store
+ADMIN_CREDENTIALS.md
+*.credentials.md

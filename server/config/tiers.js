@@ -7,7 +7,6 @@ export const CREDIT_PACKS = {
     name: 'Starter Pack',
     credits: 20,
     price: 19,        // ₹19 for 20 credits
-    pricePerCredit: 0.95,
     bonus: 0,
     popular: false,
   },
@@ -16,7 +15,6 @@ export const CREDIT_PACKS = {
     name: 'Standard Pack',
     credits: 100,
     price: 79,        // ₹79 for 100 credits (~21% cheaper per credit)
-    pricePerCredit: 0.79,
     bonus: 10,        // +10 bonus credits
     popular: true,
   },
@@ -25,7 +23,6 @@ export const CREDIT_PACKS = {
     name: 'Premium Pack',
     credits: 250,
     price: 149,       // ₹149 for 250 credits (~37% cheaper per credit)
-    pricePerCredit: 0.596,
     bonus: 50,        // +50 bonus credits
     popular: false,
   },
@@ -34,7 +31,6 @@ export const CREDIT_PACKS = {
     name: 'Enterprise Pack',
     credits: 600,
     price: 299,       // ₹299 for 600 credits (~47% cheaper per credit)
-    pricePerCredit: 0.498,
     bonus: 150,       // +150 bonus credits
     popular: false,
   },
@@ -80,4 +76,8 @@ export function hasFeature(feature) {
 export function getLimit(limitKey) {
   const value = DEFAULT_FEATURES[limitKey];
   return value === 'unlimited' ? null : (typeof value === 'number' ? value : null);
+}
+
+export function getPricePerCredit(pack) {
+  return pack.credits > 0 ? Number((pack.price / pack.credits).toFixed(4)) : 0;
 }

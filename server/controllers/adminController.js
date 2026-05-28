@@ -1,6 +1,13 @@
 import { prisma } from '../src/index.js';
 import { CREDIT_PACKS } from '../config/tiers.js';
 
+function parsePagination(query, defaultLimit = 20, maxLimit = 100) {
+  const page = Math.max(1, parseInt(query.page) || 1);
+  const limit = Math.min(Math.max(1, parseInt(query.limit) || defaultLimit), maxLimit);
+  const skip = (page - 1) * limit;
+  return { page, limit, skip };
+}
+
 // ─── helper: shape a CreditPack row for API responses ───────────────────────
 function formatPack(pack) {
   return {
@@ -48,8 +55,8 @@ export async function getStats(req, res) {
 
 export async function listUsers(req, res) {
   try {
-    const { page = 1, limit = 20, search, role } = req.query;
-    const skip = (Number(page) - 1) * Number(limit);
+    const { page, limit, skip } = parsePagination(req.query);
+    const { search, role } = req.query;
 
     const where = {};
     if (search) {
@@ -63,7 +70,7 @@ export async function listUsers(req, res) {
       prisma.user.findMany({
         where,
         skip,
-        take: Number(limit),
+        take: limit,
         orderBy: [{ role: 'asc' }, { createdAt: 'desc' }], // admins ('admin' < 'user') sort first
         select: {
           id: true, name: true, email: true, role: true, avatar: true, createdAt: true,
@@ -73,7 +80,7 @@ export async function listUsers(req, res) {
       prisma.user.count({ where }),
     ]);
 
-    res.json({ users, total, page: Number(page), totalPages: Math.ceil(total / Number(limit)) });
+    res.json({ users, total, page, totalPages: Math.ceil(total / limit) });
   } catch (error) {
     console.error('Error listing users:', error);
     res.status(500).json({ error: 'Failed to list users' });
@@ -102,10 +109,36 @@ export async function updateUser(req, res) {
   try {
     const { name, email, role, avatar } = req.body;
     const data = {};
-    if (name !== undefined) data.name = name;
-    if (email !== undefined) data.email = email;
-    if (role !== undefined) data.role = role;
-    if (avatar !== undefined) data.avatar = avatar;
+
+    if (name !== undefined) {
+      if (typeof name !== 'string' || name.trim().length < 1 || name.trim().length > 100)
+        return res.status(400).json({ error: 'Name must be 1–100 characters' });
+      data.name = name.trim();
+    }
+
+    if (email !== undefined) {
+      const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (typeof email !== 'string' || !EMAIL_RE.test(email))
+        return res.status(400).json({ error: 'Invalid email format' });
+      data.email = email.toLowerCase();
+    }
+
+    if (role !== undefined) {
+      const VALID_ROLES = ['user', 'admin'];
+      if (!VALID_ROLES.includes(role))
+        return res.status(400).json({ error: `Role must be one of: ${VALID_ROLES.join(', ')}` });
+      data.role = role;
+    }
+
+    if (avatar !== undefined) {
+      if (avatar !== null && typeof avatar === 'string' &&
+          !avatar.startsWith('https://') && !avatar.startsWith('http://') && !avatar.startsWith('data:image/'))
+        return res.status(400).json({ error: 'Invalid avatar value' });
+      data.avatar = avatar;
+    }
+
+    if (Object.keys(data).length === 0)
+      return res.status(400).json({ error: 'No valid fields provided' });
 
     const user = await prisma.user.update({
       where: { id: req.params.id },
@@ -114,6 +147,7 @@ export async function updateUser(req, res) {
     });
     res.json(user);
   } catch (error) {
+    if (error.code === 'P2025') return res.status(404).json({ error: 'User not found' });
     console.error('Error updating user:', error);
     res.status(500).json({ error: 'Failed to update user' });
   }
@@ -121,9 +155,29 @@ export async function updateUser(req, res) {
 
 export async function deleteUser(req, res) {
   try {
+    // Prevent self-deletion
+    if (req.params.id === req.user.userId) {
+      return res.status(400).json({ error: 'You cannot delete your own admin account' });
+    }
+
+    // Prevent deleting the last admin
+    const targetUser = await prisma.user.findUnique({
+      where: { id: req.params.id },
+      select: { role: true },
+    });
+    if (!targetUser) return res.status(404).json({ error: 'User not found' });
+
+    if (targetUser.role === 'admin') {
+      const adminCount = await prisma.user.count({ where: { role: 'admin' } });
+      if (adminCount <= 1) {
+        return res.status(400).json({ error: 'Cannot delete the last admin account' });
+      }
+    }
+
     await prisma.user.delete({ where: { id: req.params.id } });
     res.json({ success: true });
   } catch (error) {
+    if (error.code === 'P2025') return res.status(404).json({ error: 'User not found' });
     console.error('Error deleting user:', error);
     res.status(500).json({ error: 'Failed to delete user' });
   }
@@ -131,8 +185,8 @@ export async function deleteUser(req, res) {
 
 export async function listTemplatesAdmin(req, res) {
   try {
-    const { page = 1, limit = 20, category, plan } = req.query;
-    const skip = (Number(page) - 1) * Number(limit);
+    const { page, limit, skip } = parsePagination(req.query);
+    const { category, plan } = req.query;
     const where = {};
     if (category) where.category = category;
     if (plan) where.plan = plan;
@@ -141,13 +195,13 @@ export async function listTemplatesAdmin(req, res) {
       prisma.template.findMany({
         where,
         skip,
-        take: Number(limit),
+        take: limit,
         orderBy: { createdAt: 'desc' },
       }),
       prisma.template.count({ where }),
     ]);
 
-    res.json({ templates, total, page: Number(page), totalPages: Math.ceil(total / Number(limit)) });
+    res.json({ templates, total, page, totalPages: Math.ceil(total / limit) });
   } catch (error) {
     console.error('Error listing templates:', error);
     res.status(500).json({ error: 'Failed to list templates' });

@@ -5,8 +5,11 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
+import cron from 'node-cron';
 import { PrismaClient } from '@prisma/client';
 import { CREDIT_PACKS } from '../config/tiers.js';
+import { errorHandler } from '../middleware/errorHandler.js';
 
 import authRoutes from '../routes/auth.js';
 import promptRoutes from '../routes/prompts.js';
@@ -33,6 +36,25 @@ if (process.env.JWT_SECRET.length < 32 || process.env.JWT_REFRESH_SECRET.length 
 }
 
 export const prisma = new PrismaClient();
+
+// Prisma middleware: soft-delete enforcement
+const SOFT_DELETE_MODELS = ['User', 'Conversation', 'Prompt', 'Template'];
+prisma.$use(async (params, next) => {
+  if (SOFT_DELETE_MODELS.includes(params.model)) {
+    if (params.action === 'findMany' || params.action === 'findFirst') {
+      params.args.where = { deletedAt: null, ...params.args.where };
+    }
+    if (params.action === 'delete') {
+      params.action = 'update';
+      params.args.data = { deletedAt: new Date() };
+    }
+    if (params.action === 'deleteMany') {
+      params.action = 'updateMany';
+      params.args.data = { deletedAt: new Date() };
+    }
+  }
+  return next(params);
+});
 
 const app = express();
 const httpServer = createServer(app);
@@ -64,6 +86,7 @@ const io = new Server(httpServer, {
 io.use(authenticateSocket);
 
 app.use(helmet());
+app.use(cookieParser());
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (mobile apps, curl, Postman, server-to-server)
@@ -110,6 +133,18 @@ app.use('/api/admin', adminRoutes);
 
 setupSocketHandlers(io);
 
+// Register global error handler (must be after all routes)
+app.use(errorHandler);
+
+// Process-level error handlers
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException]', err);
+  process.exit(1);
+});
+
 // Daily cron: prune old prompts for free users only
 async function runDailyTasks() {
   try {
@@ -154,9 +189,11 @@ async function runDailyTasks() {
   }
 }
 
-// Run daily tasks at startup and every 24 hours
+// Run daily tasks at startup and at 02:00 UTC every day
 runDailyTasks();
-setInterval(runDailyTasks, 24 * 60 * 60 * 1000);
+cron.schedule('0 2 * * *', () => {
+  runDailyTasks().catch(err => console.error('Daily cron failed:', err));
+});
 
 // Sync credit packs from static config into DB on startup
 // This ensures price changes in tiers.js are reflected without manual DB edits

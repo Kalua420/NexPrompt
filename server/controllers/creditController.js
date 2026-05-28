@@ -164,11 +164,12 @@ export async function verifyCreditPayment(req, res) {
         data: {
           status: 'completed',
           razorpayPaymentId,
+          creditsGranted: payment.creditsGranted,
         },
       });
       
-      // Add credits to user balance
-      await processCreditPurchase(userId, packId);
+      // Add credits to user balance within the same transaction
+      await processCreditPurchase(userId, packId, tx);
     });
     
     const newBalance = await getCreditBalance(userId);

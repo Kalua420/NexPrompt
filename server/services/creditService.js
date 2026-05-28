@@ -1,73 +1,62 @@
 import { prisma } from '../src/index.js';
 import { CREDIT_COSTS } from '../config/tiers.js';
 
-/**
- * Get or create credit balance for a user
- */
 export async function getOrCreateCreditBalance(userId) {
   let balance = await prisma.creditBalance.findUnique({ where: { userId } });
-  
   if (!balance) {
     balance = await prisma.creditBalance.create({
       data: { userId, credits: 0 },
     });
   }
-  
   return balance;
 }
 
-/**
- * Get credit balance for a user
- */
 export async function getCreditBalance(userId) {
   const balance = await getOrCreateCreditBalance(userId);
   return balance.credits;
 }
 
-/**
- * Add credits to user balance (purchase, bonus, refund)
- */
-export async function addCredits(userId, amount, type, description, metadata = null) {
-  const balance = await getOrCreateCreditBalance(userId);
-  const newBalance = balance.credits + amount;
-  
-  await prisma.$transaction([
-    prisma.creditBalance.update({
-      where: { userId },
-      data: { credits: newBalance },
-    }),
-    prisma.creditTransaction.create({
-      data: {
-        userId,
-        type,
-        amount,
-        description,
-        metadata,
-      },
-    }),
-  ]);
-  
+export async function addCredits(userId, amount, type, description, metadata = null, tx = prisma) {
+  const balance = await tx.creditBalance.findUnique({ where: { userId } });
+  const current = balance ? balance.credits : 0;
+  const newBalance = current + amount;
+
+  await tx.creditBalance.upsert({
+    where: { userId },
+    update: { credits: newBalance },
+    create: { userId, credits: newBalance },
+  });
+
+  await tx.creditTransaction.create({
+    data: {
+      userId,
+      type,
+      amount,
+      description,
+      metadata,
+    },
+  });
+
   return newBalance;
 }
 
-/**
- * Deduct credits from user balance (usage)
- */
 export async function deductCredits(userId, amount, description, metadata = null) {
-  const balance = await getOrCreateCreditBalance(userId);
-  
-  if (balance.credits < amount) {
-    throw new Error(`Insufficient credits. You have ${balance.credits} credits but need ${amount}.`);
-  }
-  
-  const newBalance = balance.credits - amount;
-  
-  await prisma.$transaction([
-    prisma.creditBalance.update({
-      where: { userId },
-      data: { credits: newBalance },
-    }),
-    prisma.creditTransaction.create({
+  return await prisma.$transaction(async (tx) => {
+    const updated = await tx.creditBalance.updateMany({
+      where: {
+        userId,
+        credits: { gte: amount },
+      },
+      data: { credits: { decrement: amount } },
+    });
+
+    if (updated.count === 0) {
+      const balance = await tx.creditBalance.findUnique({ where: { userId } });
+      const current = balance?.credits ?? 0;
+      throw new Error(`Insufficient credits. Balance: ${current}, required: ${amount}.`);
+    }
+
+    await tx.creditTransaction.create({
       data: {
         userId,
         type: 'usage',
@@ -75,46 +64,33 @@ export async function deductCredits(userId, amount, description, metadata = null
         description,
         metadata,
       },
-    }),
-  ]);
-  
-  return newBalance;
+    });
+
+    const balance = await tx.creditBalance.findUnique({ where: { userId } });
+    return balance.credits;
+  });
 }
 
-/**
- * Check if user has enough credits
- */
 export async function hasEnoughCredits(userId, amount) {
   const balance = await getCreditBalance(userId);
   return balance >= amount;
 }
 
-/**
- * Get credit cost for a prompt generation
- */
 export function getCreditCost(provider) {
   return CREDIT_COSTS[provider] || CREDIT_COSTS.groq;
 }
 
-/**
- * Get credit transaction history
- */
 export async function getCreditTransactions(userId, limit = 50) {
   const transactions = await prisma.creditTransaction.findMany({
     where: { userId },
     orderBy: { createdAt: 'desc' },
     take: limit,
   });
-  
   return transactions;
 }
 
-/**
- * Process credit pack purchase
- * packId is a database cuid — look it up from the DB, not the static config
- */
-export async function processCreditPurchase(userId, packId) {
-  const pack = await prisma.creditPack.findUnique({ where: { id: packId } });
+export async function processCreditPurchase(userId, packId, tx = prisma) {
+  const pack = await tx.creditPack.findUnique({ where: { id: packId } });
   if (!pack || !pack.isActive) {
     throw new Error('Invalid credit pack');
   }
@@ -127,7 +103,8 @@ export async function processCreditPurchase(userId, packId) {
     totalCredits,
     'purchase',
     description,
-    { packId, baseCredits: pack.credits, bonusCredits: pack.bonusCredits }
+    { packId, baseCredits: pack.credits, bonusCredits: pack.bonusCredits },
+    tx
   );
 
   return { newBalance, creditsAdded: totalCredits, pack };

@@ -3,7 +3,7 @@ import { promptEngine } from '../services/promptEngine.js';
 import { generateQuestions } from '../services/refineService.js';
 
 import { USE_CASES, PROVIDERS } from '../config/constants.js';
-import { getCreditCost, hasEnoughCredits, deductCredits, getCreditBalance } from '../services/creditService.js';
+import { getCreditCost, deductCredits, getCreditBalance } from '../services/creditService.js';
 
 function validateProvider(provider) {
   return !provider || PROVIDERS.includes(provider);
@@ -35,7 +35,8 @@ function mergeAnswersIntoContent(content, answers) {
 
 // ─── Prompt CRUD ──────────────────────────────────────────────────────────────
 
-export async function getPrompts(req, res) {
+export async function getPrompts(req, res, next) {
+  try {
   const { conversationId, cursor, limit = 50 } = req.query;
   const where = { userId: req.user.userId };
   if (conversationId) where.conversationId = conversationId;
@@ -52,18 +53,20 @@ export async function getPrompts(req, res) {
   const nextCursor = prompts.length === take ? prompts[prompts.length - 1].id : null;
 
   res.json({ prompts, nextCursor });
+  } catch (err) { next(err); }
 }
 
-export async function getPrompt(req, res) {
+export async function getPrompt(req, res, next) {
   const prompt = await prisma.prompt.findFirst({
     where: { id: req.params.id, userId: req.user.userId },
     include: { generations: { orderBy: { createdAt: 'desc' } } },
   });
   if (!prompt) return res.status(404).json({ error: 'Prompt not found' });
   res.json(prompt);
+  } catch (err) { next(err); }
 }
 
-export async function createPrompt(req, res) {
+export async function createPrompt(req, res, next) {
   const { title, content, useCase, conversationId } = req.body;
   if (!title || !content) return res.status(400).json({ error: 'Title and content required' });
   if (typeof title !== 'string' || title.length > 500) return res.status(400).json({ error: 'Title must be under 500 characters' });
@@ -82,13 +85,15 @@ export async function createPrompt(req, res) {
   }
 
   res.status(201).json(prompt);
+  } catch (err) { next(err); }
 }
 
-export async function deletePrompt(req, res) {
+export async function deletePrompt(req, res, next) {
   const prompt = await prisma.prompt.findFirst({ where: { id: req.params.id, userId: req.user.userId } });
   if (!prompt) return res.status(404).json({ error: 'Prompt not found' });
   await prisma.prompt.delete({ where: { id: prompt.id } });
   res.json({ success: true });
+  } catch (err) { next(err); }
 }
 
 // ─── Prompt Generation & Refinement ──────────────────────────────────────────
@@ -137,27 +142,25 @@ export async function generatePrompt(req, res) {
 
   try {
     const userId = req.user.userId;
-
-    // Check credit balance
     const creditCost = getCreditCost(provider);
-    if (!await hasEnoughCredits(userId, creditCost)) {
-      const balance = await getCreditBalance(userId);
-      return res.status(403).json({
-        error: 'Insufficient credits',
-        code: 'INSUFFICIENT_CREDITS',
-        balance,
-        required: creditCost,
-      });
-    }
 
     // Merge refinement answers into the content before engine processing
     const enrichedContent = mergeAnswersIntoContent(content, answers);
     const optimized = await promptEngine(useCase, enrichedContent, provider);
 
-    // Deduct credits after successful generation
+    // Atomically deduct credits — will throw if insufficient
     try {
       await deductCredits(userId, creditCost, `Prompt generation using ${provider}`, { provider, useCase });
     } catch (creditError) {
+      if (creditError.message.startsWith('Insufficient credits')) {
+        const balance = await getCreditBalance(userId);
+        return res.status(403).json({
+          error: 'Insufficient credits',
+          code: 'INSUFFICIENT_CREDITS',
+          balance,
+          required: creditCost,
+        });
+      }
       console.error('Credit deduction error:', creditError);
     }
 

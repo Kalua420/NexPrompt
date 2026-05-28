@@ -12,13 +12,13 @@ export const useAuthStore = create(
       setPlan: (plan) => set((s) => ({ user: s.user ? { ...s.user, plan } : null })),
       setUser: (user) => set((s) => ({ user: s.user ? { ...s.user, ...user } : user })),
       logout: async () => {
-        const token = get().refreshToken;
-        if (token) {
-          await api.post('/api/auth/logout', { refreshToken: token }).catch(() => {});
-        }
+        await api.post('/api/auth/logout').catch(() => {});
         set({ user: null, accessToken: null, refreshToken: null });
       },
     }),
-    { name: 'auth-storage' },
+    {
+      name: 'auth-storage',
+      partialize: (state) => ({ user: state.user }),
+    },
   ),
 );
