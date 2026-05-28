@@ -259,7 +259,11 @@ export default function Dashboard() {
           <div className="flex gap-3 items-center">
             <button onClick={toggleSidebar} className="text-text/30 hover:text-text md:hidden transition-colors"><Menu size={20} /></button>
             <Link to="/workspace"><Button><Plus size={16} /> New prompt</Button></Link>
-            <Button variant="ghost" onClick={() => { logout(); navigate('/'); }}>
+            <Button variant="ghost" onClick={async () => {
+              await api.post('/api/auth/logout', { refreshToken: useAuthStore.getState().refreshToken }).catch(() => {});
+              logout();
+              navigate('/login');
+            }}>
               <LogOut size={16} /> Logout
             </Button>
           </div>

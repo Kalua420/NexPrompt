@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { useAuthStore } from './stores/authStore.js';
@@ -22,45 +22,48 @@ const Privacy = lazy(() => import('./pages/Legal/Privacy.jsx'));
 
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
-/**
- * Automatically redirects admin users to the admin subdomain.
- * This prevents admin users from accidentally accessing the user app.
- */
-function AdminRedirect() {
+function ProtectedRoute({ children }) {
   const user = useAuthStore((s) => s.user);
-  
+  const [hydrated, setHydrated] = useState(false);
+
   useEffect(() => {
-    if (user?.role === 'admin') {
-      const adminUrl = import.meta.env.VITE_ADMIN_URL || 'https://admin.nexprompt.site';
-      console.log('Admin user detected, redirecting to admin app:', adminUrl);
-      window.location.replace(adminUrl);
-    }
-  }, [user]);
-  
-  return null;
+    setHydrated(true);
+  }, []);
+
+  if (!hydrated) {
+    return <div className="flex items-center justify-center h-screen bg-bg text-text/50">Loading...</div>;
+  }
+
+  if (!user) return <Navigate to="/login" replace />;
+
+  if (user.role === 'admin') {
+    const adminUrl = import.meta.env.VITE_ADMIN_URL || 'https://admin.nexprompt.site';
+    window.location.replace(adminUrl + '/dashboard');
+    return null;
+  }
+
+  return children;
 }
 
 function AppRoutes() {
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <AdminRedirect />
       <Suspense fallback={<div className="flex items-center justify-center h-screen bg-bg text-text">Loading...</div>}>
         <Routes>
-          {/* User routes */}
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/workspace" element={<Workspace />} />
-          <Route path="/templates" element={<Templates />} />
-          <Route path="/favorites" element={<Favorites />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/credits" element={<Credits />} />
-          <Route path="/subscription" element={<Subscription />} />
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/workspace" element={<ProtectedRoute><Workspace /></ProtectedRoute>} />
+          <Route path="/templates" element={<ProtectedRoute><Templates /></ProtectedRoute>} />
+          <Route path="/favorites" element={<ProtectedRoute><Favorites /></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/credits" element={<ProtectedRoute><Credits /></ProtectedRoute>} />
+          <Route path="/subscription" element={<ProtectedRoute><Subscription /></ProtectedRoute>} />
           <Route path="/legal/terms" element={<Terms />} />
           <Route path="/legal/privacy" element={<Privacy />} />
         </Routes>

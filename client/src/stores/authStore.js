@@ -1,16 +1,23 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import api from '../utils/api.js';
 
 export const useAuthStore = create(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       accessToken: null,
       refreshToken: null,
       login: (user, accessToken, refreshToken) => set({ user: { ...user, plan: user.plan || 'free' }, accessToken, refreshToken }),
       setPlan: (plan) => set((s) => ({ user: s.user ? { ...s.user, plan } : null })),
       setUser: (user) => set((s) => ({ user: s.user ? { ...s.user, ...user } : user })),
-      logout: () => set({ user: null, accessToken: null, refreshToken: null }),
+      logout: async () => {
+        const token = get().refreshToken;
+        if (token) {
+          await api.post('/api/auth/logout', { refreshToken: token }).catch(() => {});
+        }
+        set({ user: null, accessToken: null, refreshToken: null });
+      },
     }),
     { name: 'auth-storage' },
   ),

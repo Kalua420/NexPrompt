@@ -1,5 +1,4 @@
 import jwt from 'jsonwebtoken';
-import { prisma } from '../src/index.js';
 
 export function authenticate(req, res, next) {
   const header = req.headers.authorization;
@@ -22,19 +21,11 @@ export function optionalAuth(req, res, next) {
   next();
 }
 
-export async function requireAdmin(req, res, next) {
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.user.userId },
-      select: { role: true },
-    });
-    if (!user || user.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
-    next();
-  } catch {
-    res.status(500).json({ error: 'Failed to verify admin status' });
+export function requireAdmin(req, res, next) {
+  if (req.user?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
   }
+  next();
 }
 
 // Socket.IO authentication middleware

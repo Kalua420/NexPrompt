@@ -16,23 +16,29 @@ api.interceptors.response.use(
     const original = err.config;
     if (err.response?.status !== 401 || original._retry) throw err;
     original._retry = true;
-    const refreshToken = useAuthStore.getState().refreshToken;
+    const { refreshToken, user } = useAuthStore.getState();
     if (!refreshToken) {
       useAuthStore.getState().logout();
+      window.location.href = '/login';
       throw err;
     }
-    if (!refreshing) {
-      refreshing = axios.create({ baseURL: api.defaults.baseURL }).post('/api/auth/refresh', { refreshToken }).then(({ data }) => {
-        useAuthStore.getState().login(useAuthStore.getState().user, data.accessToken, data.refreshToken);
-        return data.accessToken;
-      }).catch(() => {
-        useAuthStore.getState().logout();
-        throw err;
-      }).finally(() => { refreshing = null; });
+    try {
+      if (!refreshing) {
+        refreshing = api.post('/api/auth/refresh', { refreshToken })
+          .then(({ data }) => {
+            useAuthStore.getState().login(user, data.accessToken, data.refreshToken);
+            return data.accessToken;
+          })
+          .finally(() => { refreshing = null; });
+      }
+      const newToken = await refreshing;
+      original.headers.Authorization = `Bearer ${newToken}`;
+      return api(original);
+    } catch {
+      useAuthStore.getState().logout();
+      window.location.href = '/login';
+      throw err;
     }
-    const token = await refreshing;
-    original.headers.Authorization = `Bearer ${token}`;
-    return api(original);
   },
 );
 

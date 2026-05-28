@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Users, FileText, CreditCard, Settings, Activity,
@@ -16,14 +16,14 @@ import api from '../../utils/api.js';
 import { useAuthStore } from '../../stores/authStore.js';
 
 const NAV_ITEMS = [
-  { key: 'overview', label: 'Overview', icon: LayoutDashboard },
-  { key: 'users', label: 'Users', icon: Users },
-  { key: 'templates', label: 'Templates', icon: FileText },
-  { key: 'plans', label: 'Plans', icon: CreditCard },
-  { key: 'services', label: 'Services', icon: Activity },
-  { key: 'apikeys', label: 'API Keys', icon: Key },
-  { key: 'usage', label: 'Usage Logs', icon: BarChart3 },
-  { key: 'profile', label: 'Profile', icon: Settings },
+  { key: 'overview', label: 'Overview', icon: LayoutDashboard, path: '/dashboard' },
+  { key: 'users', label: 'Users', icon: Users, path: '/users' },
+  { key: 'templates', label: 'Templates', icon: FileText, path: '/templates' },
+  { key: 'plans', label: 'Plans', icon: CreditCard, path: '/plans' },
+  { key: 'services', label: 'Services', icon: Activity, path: '/services' },
+  { key: 'apikeys', label: 'API Keys', icon: Key, path: '/apikeys' },
+  { key: 'usage', label: 'Usage Logs', icon: BarChart3, path: '/usage' },
+  { key: 'profile', label: 'Profile', icon: Settings, path: '/profile' },
 ];
 
 const categories = ['chatbot', 'coding', 'writing', 'research', 'image'];
@@ -43,13 +43,18 @@ function StatCard({ label, value, icon: Icon }) {
   );
 }
 
-export default function Admin() {
+export default function Admin({ section }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
-  const [activeNav, setActiveNav] = useState('overview');
+  const [activeNav, setActiveNav] = useState(section || 'overview');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [toast, setToast] = useState({ message: '', visible: false, type: 'info' });
+
+  useEffect(() => {
+    if (section) setActiveNav(section);
+  }, [section]);
 
   useEffect(() => {
     if (!user) {
@@ -57,7 +62,6 @@ export default function Admin() {
       return;
     }
     if (user.role !== 'admin') {
-      // Redirect non-admin users to the main user app
       const userAppUrl = import.meta.env.VITE_USER_APP_URL || 'https://nexprompt.site';
       window.location.replace(`${userAppUrl}/dashboard`);
     }
@@ -68,7 +72,7 @@ export default function Admin() {
     const isActive = activeNav === item.key;
     return (
       <button
-        onClick={() => setActiveNav(item.key)}
+        onClick={() => { setActiveNav(item.key); navigate(item.path); }}
         className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 text-left ${
           isActive
             ? 'bg-accent/15 text-accent border border-accent/20'
@@ -106,7 +110,11 @@ export default function Admin() {
           </button>
           <span className="text-xs text-text/30">{user?.email}</span>
           <button
-            onClick={() => { logout(); navigate('/login'); }}
+            onClick={async () => {
+              await api.post('/api/auth/logout', { refreshToken: useAuthStore.getState().refreshToken }).catch(() => {});
+              logout();
+              navigate('/login');
+            }}
             className="flex items-center gap-1.5 text-xs text-text/30 hover:text-red-400 transition-colors"
           >
             <LogOut size={14} /> Logout

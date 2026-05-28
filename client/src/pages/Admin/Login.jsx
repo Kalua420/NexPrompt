@@ -22,12 +22,10 @@ export default function AdminLogin() {
     if (!user) return;
     
     if (user.role === 'admin') {
-      // Only navigate if we're not already on the dashboard
       if (window.location.pathname !== '/dashboard') {
         navigate('/dashboard', { replace: true });
       }
     } else {
-      // Non-admin users should go to the main user app
       const userAppUrl = import.meta.env.VITE_USER_APP_URL || 'https://nexprompt.site';
       window.location.replace(`${userAppUrl}/dashboard`);
     }
@@ -38,12 +36,7 @@ export default function AdminLogin() {
     setError('');
     setLoading(true);
     try {
-      const { data } = await api.post('/api/auth/login', { email, password });
-      if (data.user.role !== 'admin') {
-        setError('Access denied. Admin credentials required.');
-        setLoading(false);
-        return;
-      }
+      const { data } = await api.post('/api/auth/admin/login', { email, password });
       login(data.user, data.accessToken, data.refreshToken);
       navigate('/dashboard');
     } catch (err) {

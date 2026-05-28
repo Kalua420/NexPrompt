@@ -31,6 +31,11 @@ function validatePassword(password) {
   return null;
 }
 
+async function getUserPlan(userId) {
+  const sub = await prisma.subscription.findUnique({ where: { userId } });
+  return sub?.plan || 'free';
+}
+
 export async function register(req, res) {
   const { name, email, password } = req.body;
   if (!name || !email || !password) return res.status(400).json({ error: 'All fields required' });
@@ -111,12 +116,12 @@ export async function verifyEmail(req, res) {
     console.error('Failed to send welcome email:', err.message)
   );
 
-  const accessToken = generateAccessToken(user.id);
-  const refreshToken = generateRefreshToken(user.id);
+  const accessToken = generateAccessToken(user.id, user.role);
+  const refreshToken = await generateRefreshToken(user.id);
 
   res.json({
     message: 'Email verified successfully.',
-    user: { id: user.id, name: user.name, email: user.email, avatar: user.avatar, role: user.role, plan: 'free' },
+    user: { id: user.id, name: user.name, email: user.email, avatar: user.avatar, role: user.role, plan: await getUserPlan(user.id) },
     credits: balance,
     accessToken,
     refreshToken,
@@ -152,8 +157,8 @@ export async function login(req, res) {
     return res.status(401).json({ error: 'Invalid credentials' });
   }
 
-  // Block unverified accounts
-  if (!user.emailVerified) {
+  // Block unverified accounts (skip for admin users)
+  if (!user.emailVerified && user.role !== 'admin') {
     return res.status(403).json({
       error: 'Please verify your email address before logging in.',
       requiresVerification: true,
@@ -161,16 +166,34 @@ export async function login(req, res) {
     });
   }
 
-  const accessToken = generateAccessToken(user.id);
-  const refreshToken = generateRefreshToken(user.id);
+  const accessToken = generateAccessToken(user.id, user.role);
+  const refreshToken = await generateRefreshToken(user.id);
   res.json({
     user: {
       id: user.id, name: user.name, email: user.email, avatar: user.avatar, role: user.role,
       googleId: user.googleId || null, hasPassword: !!user.passwordHash,
-      plan: 'free',
+      plan: await getUserPlan(user.id),
     },
     accessToken,
     refreshToken,
+  });
+}
+
+export async function adminLogin(req, res) {
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user || !user.passwordHash || !(await bcrypt.compare(password, user.passwordHash))) {
+    return res.status(401).json({ error: 'Invalid credentials' });
+  }
+  if (user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  const accessToken = generateAccessToken(user.id, user.role);
+  const refreshToken = await generateRefreshToken(user.id);
+  res.json({
+    user: { id: user.id, name: user.name, email: user.email, avatar: user.avatar, role: user.role },
+    accessToken, refreshToken,
   });
 }
 
@@ -180,8 +203,7 @@ export async function me(req, res) {
     select: { id: true, name: true, email: true, avatar: true, role: true, createdAt: true, googleId: true, passwordHash: true },
   });
   if (!user) return res.status(404).json({ error: 'User not found' });
-  // Expose whether the account has a password and is Google-linked, without leaking the hash
-  res.json({ ...user, passwordHash: undefined, hasPassword: !!user.passwordHash, plan: 'free' });
+  res.json({ ...user, passwordHash: undefined, hasPassword: !!user.passwordHash, plan: await getUserPlan(user.id) });
 }
 
 export async function refreshToken(req, res) {
@@ -189,14 +211,30 @@ export async function refreshToken(req, res) {
   if (!token) return res.status(400).json({ error: 'Refresh token required' });
   try {
     const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+    const hash = crypto.createHash('sha256').update(token).digest('hex');
+    const stored = await prisma.refreshToken.findUnique({ where: { tokenHash: hash } });
+    if (!stored || stored.expiresAt < new Date()) {
+      await prisma.refreshToken.deleteMany({ where: { tokenHash: hash } });
+      return res.status(401).json({ error: 'Token revoked or expired' });
+    }
+    await prisma.refreshToken.delete({ where: { tokenHash: hash } });
     const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
     if (!user) return res.status(401).json({ error: 'User not found' });
-    const accessToken = generateAccessToken(user.id);
-    const newRefreshToken = generateRefreshToken(user.id);
+    const accessToken = generateAccessToken(user.id, user.role);
+    const newRefreshToken = await generateRefreshToken(user.id);
     res.json({ accessToken, refreshToken: newRefreshToken });
   } catch {
     res.status(401).json({ error: 'Invalid or expired refresh token' });
   }
+}
+
+export async function logout(req, res) {
+  const { refreshToken } = req.body;
+  if (refreshToken) {
+    const hash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+    await prisma.refreshToken.deleteMany({ where: { tokenHash: hash } }).catch(() => {});
+  }
+  res.json({ message: 'Logged out' });
 }
 
 export async function forgotPassword(req, res) {
@@ -344,7 +382,7 @@ export async function updateProfile(req, res) {
       select: { id: true, name: true, email: true, avatar: true, role: true },
     });
 
-    res.json({ user: { ...updated, plan: 'free' } });
+    res.json({ user: { ...updated, plan: await getUserPlan(userId) } });
   } catch (error) {
     console.error('Error updating profile:', error);
     res.status(500).json({ error: 'Failed to update profile' });
@@ -446,8 +484,8 @@ export async function googleAuth(req, res) {
     }
   }
 
-  const accessToken = generateAccessToken(user.id);
-  const refreshToken = generateRefreshToken(user.id);
+  const accessToken = generateAccessToken(user.id, user.role);
+  const refreshToken = await generateRefreshToken(user.id);
 
   res.json({
     user: {
@@ -458,7 +496,7 @@ export async function googleAuth(req, res) {
       role: user.role,
       googleId: user.googleId || null,
       hasPassword: !!user.passwordHash,
-      plan: 'free',
+      plan: await getUserPlan(user.id),
     },
     accessToken,
     refreshToken,
