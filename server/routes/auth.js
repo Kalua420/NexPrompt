@@ -24,7 +24,7 @@ const router = Router();
 router.post('/register',           authLimiter, register);
 router.post('/login',              authLimiter, login);
 router.post('/admin/login',        authLimiter, adminLogin);
-router.post('/google',             googleAuth);
+router.post('/google',             authLimiter, googleAuth);
 router.post('/verify-email',       verifyEmail);
 router.post('/resend-verification',authLimiter, resendVerification);
 router.post('/refresh',            refreshToken);

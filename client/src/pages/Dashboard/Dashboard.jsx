@@ -195,9 +195,9 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-bg">
+      <div className="h-screen overflow-hidden bg-bg">
         <Sidebar />
-        <div className={`${sidebarOpen ? 'ml-64' : 'ml-0'} p-4 md:p-8 transition-all`}>
+        <div className={`${sidebarOpen ? 'ml-64' : 'ml-0'} h-screen overflow-y-auto p-4 md:p-8 transition-all`}>
           <Loader text="Loading your dashboard..." />
         </div>
       </div>
@@ -210,9 +210,9 @@ export default function Dashboard() {
   const usageLimit = promptsLimit ? { used: usage?.promptsUsed || 0, limit: promptsLimit } : null;
 
   return (
-    <div className="min-h-screen bg-bg bg-grid">
+    <div className="h-screen overflow-hidden bg-bg bg-grid">
       <Sidebar />
-      <div className={`${sidebarOpen ? 'ml-64' : 'ml-0'} p-4 md:p-8 transition-all`}>
+      <div className={`${sidebarOpen ? 'ml-64' : 'ml-0'} h-screen overflow-y-auto p-4 md:p-8 transition-all`}>
         {showWelcome && (
           <motion.div
             initial={{ opacity: 0, y: -12 }}

@@ -42,7 +42,7 @@ export default function Workspace() {
   const navigate = useNavigate();
   const location = useLocation();
   const [content, setContent] = useState(location.state?.templateContent || location.state?.promptContent || '');
-  const [useCase, setUseCase] = useState('chatbot');
+  const [useCase, setUseCase] = useState(location.state?.templateUseCase || 'chatbot');
   const [provider, setProvider] = useState('');
   const [providers, setProviders] = useState([]);
   const [messages, setMessages] = useState([]);
@@ -101,6 +101,29 @@ export default function Workspace() {
     }
   }, []);
 
+  function getFreshToken() {
+    const state = useAuthStore.getState();
+    const token = state.accessToken;
+    if (!token) return Promise.resolve(null);
+
+    // Decode JWT payload (no verification needed — just checking exp client-side)
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const buffer = 60; // 60-second buffer before actual expiry
+      if (payload.exp * 1000 > Date.now() + buffer * 1000) {
+        return Promise.resolve(token); // still fresh
+      }
+    } catch { /* fall through to refresh */ }
+
+    // Token is expired or unparseable — try to refresh
+    return api.post('/api/auth/refresh', { refreshToken: state.refreshToken })
+      .then(({ data }) => {
+        useAuthStore.getState().login(state.user, data.accessToken, data.refreshToken);
+        return data.accessToken;
+      })
+      .catch(() => null);
+  }
+
   useEffect(() => {
     // Check authentication
     const user = useAuthStore.getState().user;
@@ -110,54 +133,53 @@ export default function Workspace() {
     }
 
     const convId = location.state?.conversationId || localStorage.getItem('currentConversationId');
-    
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
-    const authToken = useAuthStore.getState().accessToken;
-    
-    console.log('🔌 Attempting to connect to:', socketUrl);
-    console.log('🔑 Socket auth token:', authToken ? `Present (${authToken.substring(0, 20)}...)` : 'Missing');
-    
-    if (!authToken) {
-      console.error('❌ No access token available. User might need to log in again.');
-      setToast({ message: 'Authentication required. Please log in again.', visible: true, type: 'error' });
-      setInitialLoading(false);
-      return;
-    }
-    
-    const s = io(socketUrl, {
-      auth: { token: authToken },
-      reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      reconnectionAttempts: 5,
-      transports: ['websocket', 'polling'],
-    });
-    
-    // Socket connection handlers
-    s.on('connect', () => {
-      console.log('✅ Socket connected successfully');
-      setSocketConnected(true);
-      setToast({ message: 'Connected', visible: true, type: 'success' });
-    });
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || '';
 
-    s.on('disconnect', () => {
-      console.log('❌ Socket disconnected');
-      setSocketConnected(false);
-      setToast({ message: 'Disconnected from server', visible: true, type: 'error' });
-    });
+    getFreshToken().then((freshToken) => {
+      if (!freshToken) {
+        console.error('❌ No valid token — redirecting to login');
+        useAuthStore.getState().logout();
+        navigate('/login');
+        return;
+      }
 
-    s.on('connect_error', (error) => {
-      console.error('❌ Socket connection error:', error);
-      console.error('Error details:', {
-        message: error.message,
-        description: error.description,
-        context: error.context,
-        type: error.type
+      console.log('🔌 Attempting to connect to:', socketUrl || '(same origin)');
+      
+      const s = io(socketUrl, {
+        auth: { token: freshToken },
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        reconnectionAttempts: 5,
+        transports: ['websocket', 'polling'],
       });
-      console.error('Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
-      setSocketConnected(false);
-      setToast({ message: `Connection error: ${error.message}`, visible: true, type: 'error' });
-    });
+      
+      // Socket connection handlers
+      s.on('connect', () => {
+        console.log('✅ Socket connected successfully');
+        setSocketConnected(true);
+        setToast({ message: 'Connected', visible: true, type: 'success' });
+      });
+
+      s.on('disconnect', () => {
+        console.log('❌ Socket disconnected');
+        setSocketConnected(false);
+        setToast({ message: 'Disconnected from server', visible: true, type: 'error' });
+      });
+
+      s.on('connect_error', (error) => {
+        console.error('❌ Socket connection error:', error);
+        setSocketConnected(false);
+        
+        if (error.message === 'Invalid token' || error.message === 'Authentication required') {
+          console.error('❌ Socket auth failed — clearing stale session');
+          useAuthStore.getState().logout();
+          navigate('/login');
+          return;
+        }
+        
+        setToast({ message: `Connection error: ${error.message}`, visible: true, type: 'error' });
+      });
 
     s.on('reconnect', () => {
       setSocketConnected(true);
@@ -218,6 +240,7 @@ export default function Workspace() {
         s.close();
       }
     };
+    });
   }, []);
 
   useEffect(() => {

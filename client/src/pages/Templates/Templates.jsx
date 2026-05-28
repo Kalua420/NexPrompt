@@ -87,7 +87,7 @@ export default function Templates() {
   };
 
   const handleUseTemplate = (template) => {
-    navigate('/workspace', { state: { templateContent: template.content } });
+    navigate('/workspace', { state: { templateContent: template.content, templateUseCase: template.useCase } });
   };
 
   const handleCopy = async () => {
@@ -101,9 +101,9 @@ export default function Templates() {
   };
 
   return (
-    <div className="min-h-screen bg-bg bg-grid">
+    <div className="h-screen overflow-hidden bg-bg bg-grid">
       <Sidebar />
-      <div className={`${sidebarOpen ? 'ml-64' : 'ml-0'} p-4 md:p-8 transition-all`}>
+      <div className={`${sidebarOpen ? 'ml-64' : 'ml-0'} h-screen overflow-y-auto p-4 md:p-8 transition-all`}>
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="text-2xl font-bold mb-2">Template Marketplace</h1>
           <p className="text-text/50 text-sm mb-6">Browse community templates to jumpstart your prompts.</p>

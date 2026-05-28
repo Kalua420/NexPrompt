@@ -97,7 +97,9 @@ const io = new Server(httpServer, {
 
 io.use(authenticateSocket);
 
-app.use(helmet());
+app.use(helmet({
+  crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
+}));
 app.use(cookieParser());
 app.use(cors({
   origin: (origin, callback) => {
@@ -125,7 +127,7 @@ app.use(express.json({ limit: '1mb' }));
 // Rate limiting: more lenient in development
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'production' ? 100 : 500, // 500 for dev, 100 for prod
+  max: parseInt(process.env.RATE_LIMIT_MAX) || (process.env.NODE_ENV === 'production' ? 300 : 500),
   standardHeaders: true,
   legacyHeaders: false,
 });

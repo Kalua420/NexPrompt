@@ -81,9 +81,9 @@ export default function Favorites() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-bg">
+      <div className="h-screen overflow-hidden bg-bg">
         <Sidebar />
-        <div className={`${sidebarOpen ? 'ml-64' : 'ml-0'} p-4 md:p-8 transition-all`}>
+        <div className={`${sidebarOpen ? 'ml-64' : 'ml-0'} h-screen overflow-y-auto p-4 md:p-8 transition-all`}>
           <Loader text="Loading your favorites..." />
         </div>
       </div>
@@ -91,9 +91,9 @@ export default function Favorites() {
   }
 
   return (
-    <div className="min-h-screen bg-bg bg-grid">
+    <div className="h-screen overflow-hidden bg-bg bg-grid">
       <Sidebar />
-      <div className={`${sidebarOpen ? 'ml-64' : 'ml-0'} p-4 md:p-8 transition-all duration-300`}>
+      <div className={`${sidebarOpen ? 'ml-64' : 'ml-0'} h-screen overflow-y-auto p-4 md:p-8 transition-all duration-300`}>
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}

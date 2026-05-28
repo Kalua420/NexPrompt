@@ -87,9 +87,9 @@ export default function SubscriptionPage() {
   };
 
   return (
-    <div className="min-h-screen bg-bg">
+    <div className="h-screen overflow-hidden bg-bg">
       <Sidebar />
-      <div className={`${sidebarOpen ? 'ml-64' : 'ml-0'} p-4 md:p-8 transition-all duration-300`}>
+      <div className={`${sidebarOpen ? 'ml-64' : 'ml-0'} h-screen overflow-y-auto p-4 md:p-8 transition-all duration-300`}>
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <motion.h1 initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-4xl md:text-5xl font-bold mb-3">

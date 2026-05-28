@@ -104,9 +104,9 @@ export default function Profile() {
   };
 
   return (
-    <div className="min-h-screen bg-bg">
+    <div className="h-screen overflow-hidden bg-bg">
       <Sidebar />
-      <div className={`${sidebarOpen ? 'ml-64' : 'ml-0'} p-4 md:p-8 transition-all`}>
+      <div className={`${sidebarOpen ? 'ml-64' : 'ml-0'} h-screen overflow-y-auto p-4 md:p-8 transition-all`}>
 
         <h1 className="text-2xl font-bold mb-8">Profile</h1>
 

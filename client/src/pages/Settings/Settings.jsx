@@ -58,9 +58,9 @@ export default function Settings() {
   };
 
   return (
-    <div className="min-h-screen bg-bg">
+    <div className="h-screen overflow-hidden bg-bg">
       <Sidebar />
-      <div className={`${sidebarOpen ? 'ml-64' : 'ml-0'} p-4 md:p-8 transition-all`}>
+      <div className={`${sidebarOpen ? 'ml-64' : 'ml-0'} h-screen overflow-y-auto p-4 md:p-8 transition-all`}>
         <h1 className="text-2xl font-bold mb-6">Settings</h1>
         <div className="overflow-x-auto">
           <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
