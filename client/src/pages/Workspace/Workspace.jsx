@@ -63,6 +63,7 @@ export default function Workspace() {
   const { conversations, currentConversation, setConversations, setCurrentConversation, addConversation, removeConversation, updateConversation } = useConversationStore();
   const { setBalance } = useCreditStore();
   const sidebarOpen = useUiStore((s) => s.sidebarOpen);
+  const sidebarCollapsed = useUiStore((s) => s.sidebarCollapsed);
   const messagesEnd = useRef(null);
   const textareaRef = useRef(null);
 
@@ -581,7 +582,7 @@ export default function Workspace() {
   return (
     <div className="min-h-screen bg-bg bg-grid">
       <Sidebar />
-      <div className={`${sidebarOpen ? 'ml-64' : 'ml-0'} h-screen flex transition-all`}>
+      <div className={`ml-0 ${sidebarCollapsed ? 'md:ml-[68px]' : 'md:ml-64'} h-screen flex transition-all`}>
         <div className="flex-1 flex flex-col min-w-0">
           <div className="flex items-center gap-2 px-4 md:px-8 py-3 border-b border-border bg-black/10">
             {editingTitle ? (

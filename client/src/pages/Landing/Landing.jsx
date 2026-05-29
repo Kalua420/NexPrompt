@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import { useAuthStore } from '../../stores/authStore.js';
 
 /* ─── Design tokens ───────────────────────────────────────────── */
 const C = {
@@ -295,8 +296,12 @@ export default function Landing() {
   const { scrollY }     = useScroll();
   const headerBg        = useTransform(scrollY, [0, 80], ['rgba(19,19,24,0)', 'rgba(19,19,24,0.95)']);
 
-  const scrollTo = id => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const user = useAuthStore((s) => s.user);
+  const hydrated = useAuthStore((s) => s._hydrated);
+  const scrollTo = id => { setMobileOpen(false); document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }); };
   const strategy = STRATEGIES[activeStrategy];
+  const adminUrl = import.meta.env.VITE_ADMIN_URL || 'https://admin.nexprompt.site';
 
   return (
     <div style={{ background: C.bg, color: C.onSurface, minHeight: '100vh', fontFamily: 'Inter, system-ui, sans-serif', overflowX: 'hidden' }}>
@@ -309,6 +314,23 @@ export default function Landing() {
         ::selection { background:${C.forge}; color:#fff; }
         ::-webkit-scrollbar { width:4px; }
         ::-webkit-scrollbar-thumb { background:${C.forge}55; border-radius:4px; }
+        @media (max-width: 768px) {
+          .nav-links-desktop { display: none !important; }
+          .nav-cta-desktop { display: none !important; }
+          .nav-mobile-toggle { display: flex !important; }
+          .stats-grid { grid-template-columns: 1fr !important; gap: 24px !important; }
+          .stats-grid > div { border-left: none !important; border-right: none !important; padding: 12px 0 !important; }
+          .strategy-tabs-wrap { flex-wrap: nowrap !important; overflow-x: auto !important; justify-content: flex-start !important; scrollbar-width: none; -ms-overflow-style: none; }
+          .strategy-tabs-wrap::-webkit-scrollbar { display: none; }
+          .pricing-card-hot { transform: scale(1) !important; }
+          .hero-grid { grid-template-columns: 1fr !important; gap: 48px !important; }
+          .hero-section { padding-top: 96px !important; }
+          .footer-links { flex-direction: column !important; gap: 16px !important; }
+        }
+        @media (min-width: 769px) {
+          .nav-mobile-toggle { display: none !important; }
+          .mobile-menu { display: none !important; }
+        }
         @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
         .animate-float { animation:float 6s ease-in-out infinite; }
         @keyframes ping { 0%{transform:scale(1);opacity:.75} 75%,100%{transform:scale(2);opacity:0} }
@@ -333,29 +355,125 @@ export default function Landing() {
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
             NexPrompt
           </span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+
+          {/* Desktop nav links */}
+          <div className="nav-links-desktop" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <button className="nav-link" style={{ color: C.forge, fontWeight: 700 }} onClick={() => scrollTo('process')}>Process</button>
             <button className="nav-link" onClick={() => scrollTo('pricing')}>Pricing</button>
             <button className="nav-link" onClick={() => scrollTo('strategies')}>Showcase</button>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Link to="/login" className="nav-link" style={{ textDecoration: 'none' }}>Sign In</Link>
-            <Link to="/register" style={{
-              background: C.forge, color: '#fff', padding: '8px 24px', borderRadius: 9999,
-              fontWeight: 700, fontSize: 14, textDecoration: 'none',
-              boxShadow: `0 4px 16px rgba(255,77,28,0.2)`, transition: 'filter .2s',
-            }}
-              onMouseEnter={e => e.target.style.filter = 'brightness(1.1)'}
-              onMouseLeave={e => e.target.style.filter = 'brightness(1)'}>
-              Get Started
-            </Link>
+          <div className="nav-links-desktop" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {hydrated && user ? (
+              user.role === 'admin' ? (
+                <a href={`${adminUrl}/dashboard`} className="nav-link" style={{ textDecoration: 'none' }}>Admin Panel</a>
+              ) : (
+                <Link to="/dashboard" className="nav-link" style={{ textDecoration: 'none' }}>Dashboard</Link>
+              )
+            ) : (
+              <Link to="/login" className="nav-link" style={{ textDecoration: 'none' }}>Sign In</Link>
+            )}
+            {hydrated && user ? (
+              user.role === 'admin' ? (
+                <a href={`${adminUrl}/dashboard`} style={{
+                  background: C.forge, color: '#fff', padding: '8px 24px', borderRadius: 9999,
+                  fontWeight: 700, fontSize: 14, textDecoration: 'none',
+                  boxShadow: `0 4px 16px rgba(255,77,28,0.2)`, transition: 'filter .2s',
+                }}
+                  onMouseEnter={e => e.target.style.filter = 'brightness(1.1)'}
+                  onMouseLeave={e => e.target.style.filter = 'brightness(1)'}>
+                  Admin Panel
+                </a>
+              ) : (
+                <Link to="/workspace" style={{
+                  background: C.forge, color: '#fff', padding: '8px 24px', borderRadius: 9999,
+                  fontWeight: 700, fontSize: 14, textDecoration: 'none',
+                  boxShadow: `0 4px 16px rgba(255,77,28,0.2)`, transition: 'filter .2s',
+                }}
+                  onMouseEnter={e => e.target.style.filter = 'brightness(1.1)'}
+                  onMouseLeave={e => e.target.style.filter = 'brightness(1)'}>
+                  Workspace
+                </Link>
+              )
+            ) : (
+              <Link to="/register" style={{
+                background: C.forge, color: '#fff', padding: '8px 24px', borderRadius: 9999,
+                fontWeight: 700, fontSize: 14, textDecoration: 'none',
+                boxShadow: `0 4px 16px rgba(255,77,28,0.2)`, transition: 'filter .2s',
+              }}
+                onMouseEnter={e => e.target.style.filter = 'brightness(1.1)'}
+                onMouseLeave={e => e.target.style.filter = 'brightness(1)'}>
+                Get Started
+              </Link>
+            )}
           </div>
+
+          {/* Mobile hamburger */}
+          <button className="nav-mobile-toggle" onClick={() => setMobileOpen(o => !o)}
+            style={{
+              background: 'none', border: 'none', color: C.onSurface, cursor: 'pointer',
+              padding: 8, borderRadius: 8, alignItems: 'center', justifyContent: 'center',
+            }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 24 }}>
+              {mobileOpen ? 'close' : 'menu'}
+            </span>
+          </button>
         </div>
+
+        {/* Mobile menu */}
+        {mobileOpen && (
+          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+            style={{
+              display: 'flex', flexDirection: 'column', gap: 4,
+              padding: '8px clamp(16px,4vw,48px) 16px',
+              borderTop: '1px solid rgba(255,255,255,0.05)',
+            }}>
+            <button className="nav-link" style={{ color: C.forge, fontWeight: 700, textAlign: 'left', padding: '12px 8px', fontSize: 15 }} onClick={() => scrollTo('process')}>Process</button>
+            <button className="nav-link" style={{ textAlign: 'left', padding: '12px 8px', fontSize: 15 }} onClick={() => scrollTo('pricing')}>Pricing</button>
+            <button className="nav-link" style={{ textAlign: 'left', padding: '12px 8px', fontSize: 15 }} onClick={() => scrollTo('strategies')}>Showcase</button>
+            <hr style={{ border: 'none', borderTop: '1px solid rgba(255,255,255,0.05)', margin: '4px 0' }} />
+            {hydrated && user ? (
+              user.role === 'admin' ? (
+                <a href={`${adminUrl}/dashboard`} className="nav-link" style={{ textDecoration: 'none', textAlign: 'left', padding: '12px 8px', fontSize: 15 }}>Admin Panel</a>
+              ) : (
+                <Link to="/dashboard" className="nav-link" style={{ textDecoration: 'none', textAlign: 'left', padding: '12px 8px', fontSize: 15 }}>Dashboard</Link>
+              )
+            ) : (
+              <Link to="/login" className="nav-link" style={{ textDecoration: 'none', textAlign: 'left', padding: '12px 8px', fontSize: 15 }}>Sign In</Link>
+            )}
+            {hydrated && user ? (
+              user.role === 'admin' ? (
+                <a href={`${adminUrl}/dashboard`} style={{
+                  display: 'block', textAlign: 'center',
+                  background: C.forge, color: '#fff', padding: '14px 24px', borderRadius: 9999,
+                  fontWeight: 700, fontSize: 14, textDecoration: 'none', marginTop: 4,
+                }}>
+                  Admin Panel
+                </a>
+              ) : (
+                <Link to="/workspace" style={{
+                  display: 'block', textAlign: 'center',
+                  background: C.forge, color: '#fff', padding: '14px 24px', borderRadius: 9999,
+                  fontWeight: 700, fontSize: 14, textDecoration: 'none', marginTop: 4,
+                }}>
+                  Workspace
+                </Link>
+              )
+            ) : (
+              <Link to="/register" style={{
+                display: 'block', textAlign: 'center',
+                background: C.forge, color: '#fff', padding: '14px 24px', borderRadius: 9999,
+                fontWeight: 700, fontSize: 14, textDecoration: 'none', marginTop: 4,
+              }}>
+                Get Started
+              </Link>
+            )}
+          </motion.div>
+        )}
       </motion.nav>
 
       {/* ── Hero ── */}
-      <section style={{ position: 'relative', padding: '128px clamp(16px,4vw,48px) 80px', maxWidth: 1280, margin: '0 auto', zIndex: 10 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))', gap: 64, alignItems: 'center' }}>
+      <section className="hero-section" style={{ position: 'relative', padding: '128px clamp(16px,4vw,48px) 80px', maxWidth: 1280, margin: '0 auto', zIndex: 10 }}>
+        <div className="hero-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))', gap: 64, alignItems: 'center' }}>
 
           {/* Left */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
@@ -394,17 +512,31 @@ export default function Landing() {
             {/* CTAs */}
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
               style={{ display: 'flex', flexWrap: 'wrap', gap: 16, paddingTop: 16 }}>
-              <Link to="/register" style={{
-                display: 'inline-flex', alignItems: 'center', gap: 8,
-                background: C.forge, color: '#fff', padding: '16px 32px', borderRadius: 12,
-                fontWeight: 700, fontSize: 15, textDecoration: 'none',
-                boxShadow: `0 0 40px -10px ${C.forgeGlow}`, transition: 'filter .2s',
-              }}
-                onMouseEnter={e => e.target.style.filter = 'brightness(1.1)'}
-                onMouseLeave={e => e.target.style.filter = 'brightness(1)'}>
-                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>bolt</span>
-                Start Forging Free
-              </Link>
+              {hydrated && user ? (
+                <Link to="/workspace" style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  background: C.forge, color: '#fff', padding: '16px 32px', borderRadius: 12,
+                  fontWeight: 700, fontSize: 15, textDecoration: 'none',
+                  boxShadow: `0 0 40px -10px ${C.forgeGlow}`, transition: 'filter .2s',
+                }}
+                  onMouseEnter={e => e.target.style.filter = 'brightness(1.1)'}
+                  onMouseLeave={e => e.target.style.filter = 'brightness(1)'}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>bolt</span>
+                  Go to Workspace
+                </Link>
+              ) : (
+                <Link to="/register" style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  background: C.forge, color: '#fff', padding: '16px 32px', borderRadius: 12,
+                  fontWeight: 700, fontSize: 15, textDecoration: 'none',
+                  boxShadow: `0 0 40px -10px ${C.forgeGlow}`, transition: 'filter .2s',
+                }}
+                  onMouseEnter={e => e.target.style.filter = 'brightness(1.1)'}
+                  onMouseLeave={e => e.target.style.filter = 'brightness(1)'}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>bolt</span>
+                  Start Forging Free
+                </Link>
+              )}
               <button onClick={() => scrollTo('strategies')} style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
                 background: 'rgba(19,19,24,0.7)', backdropFilter: 'blur(12px)',
@@ -430,7 +562,7 @@ export default function Landing() {
 
       {/* ── Stats ── */}
       <section style={{ padding: '80px clamp(16px,4vw,48px)', background: 'rgba(14,14,19,0.5)', borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-        <div style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 48, textAlign: 'center' }}>
+        <div className="stats-grid" style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 48, textAlign: 'center' }}>
           {[
             { value: '24+',  label: 'Expert Templates' },
             { value: '6',    label: 'Domain Strategies', border: true },
@@ -458,7 +590,7 @@ export default function Landing() {
         </motion.div>
 
         {/* Tab bar */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginBottom: 40, padding: 4, background: 'rgba(10,10,15,0.5)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 16, maxWidth: 860, margin: '0 auto 40px' }}>
+        <div className="strategy-tabs-wrap" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginBottom: 40, padding: 4, background: 'rgba(10,10,15,0.5)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 16, maxWidth: 860, margin: '0 auto 40px' }}>
           {STRATEGY_TABS.map(tab => (
             <button key={tab.id} onClick={() => setActiveStrategy(tab.id)}
               style={{
@@ -586,6 +718,7 @@ export default function Landing() {
             {PACKS.map((pack, i) => (
               <motion.div key={pack.id}
                 initial={{ opacity: 0, y: 28 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}
+                className={pack.hot ? 'pricing-card-hot' : ''}
                 style={{
                   background: pack.hot ? 'rgba(255,77,28,0.02)' : 'rgba(19,19,24,0.7)',
                   backdropFilter: 'blur(12px)',
@@ -663,7 +796,7 @@ export default function Landing() {
             </p>
           </div>
 
-          <div style={{ display: 'flex', gap: 32 }}>
+          <div className="footer-links" style={{ display: 'flex', gap: 32 }}>
             {[['Privacy', '/privacy'], ['Terms', '/terms'], ['Docs', '#'], ['API', '#']].map(([label, to]) => (
               <Link key={label} to={to} style={{ color: 'rgba(228,225,233,0.5)', fontSize: 11, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', textDecoration: 'none', transition: 'color .15s' }}
                 onMouseEnter={e => e.target.style.color = C.forge}

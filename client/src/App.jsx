@@ -36,12 +36,6 @@ function ProtectedRoute({ children }) {
 
   if (!user) return <Navigate to="/login" replace />;
 
-  if (user.role === 'admin') {
-    const adminUrl = import.meta.env.VITE_ADMIN_URL || 'https://admin.nexprompt.site';
-    window.location.replace(adminUrl + '/dashboard');
-    return null;
-  }
-
   return children;
 }
 

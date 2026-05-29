@@ -25,6 +25,7 @@ export default function Favorites() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const sidebarOpen = useUiStore((s) => s.sidebarOpen);
+  const sidebarCollapsed = useUiStore((s) => s.sidebarCollapsed);
 
   const [favorites, setFavorites] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -83,7 +84,7 @@ export default function Favorites() {
     return (
       <div className="h-screen overflow-hidden bg-bg">
         <Sidebar />
-        <div className={`${sidebarOpen ? 'ml-64' : 'ml-0'} h-screen overflow-y-auto p-4 md:p-8 transition-all`}>
+        <div className={`ml-0 ${sidebarCollapsed ? 'md:ml-[68px]' : 'md:ml-64'} h-screen overflow-y-auto p-4 md:p-8 transition-all`}>
           <Loader text="Loading your favorites..." />
         </div>
       </div>
@@ -93,7 +94,7 @@ export default function Favorites() {
   return (
     <div className="h-screen overflow-hidden bg-bg bg-grid">
       <Sidebar />
-      <div className={`${sidebarOpen ? 'ml-64' : 'ml-0'} h-screen overflow-y-auto p-4 md:p-8 transition-all duration-300`}>
+      <div className={`ml-0 ${sidebarCollapsed ? 'md:ml-[68px]' : 'md:ml-64'} h-screen overflow-y-auto p-4 md:p-8 transition-all duration-300`}>
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}

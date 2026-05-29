@@ -15,6 +15,7 @@ export default function Settings() {
   const navigate    = useNavigate();
   const user        = useAuthStore((s) => s.user);
   const sidebarOpen = useUiStore((s) => s.sidebarOpen);
+  const sidebarCollapsed = useUiStore((s) => s.sidebarCollapsed);
   const [activeTab, setActiveTab] = useState('Password');
   const [toast,     setToast]     = useState({ message: '', visible: false, type: 'info' });
 
@@ -60,7 +61,7 @@ export default function Settings() {
   return (
     <div className="h-screen overflow-hidden bg-bg">
       <Sidebar />
-      <div className={`${sidebarOpen ? 'ml-64' : 'ml-0'} h-screen overflow-y-auto p-4 md:p-8 transition-all`}>
+      <div className={`ml-0 ${sidebarCollapsed ? 'md:ml-[68px]' : 'md:ml-64'} h-screen overflow-y-auto p-4 md:p-8 transition-all`}>
         <h1 className="text-2xl font-bold mb-6">Settings</h1>
         <div className="overflow-x-auto">
           <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} />

@@ -35,6 +35,7 @@ export default function Templates() {
   const [category, setCategory] = useState('All');
   const [planFilterLabel, setPlanFilterLabel] = useState('All Plans');
   const sidebarOpen = useUiStore((s) => s.sidebarOpen);
+  const sidebarCollapsed = useUiStore((s) => s.sidebarCollapsed);
   const [hydrated, setHydrated] = useState(false);
   const [selected, setSelected] = useState(null);
   const [copied, setCopied] = useState(false);
@@ -103,7 +104,7 @@ export default function Templates() {
   return (
     <div className="h-screen overflow-hidden bg-bg bg-grid">
       <Sidebar />
-      <div className={`${sidebarOpen ? 'ml-64' : 'ml-0'} h-screen overflow-y-auto p-4 md:p-8 transition-all`}>
+      <div className={`ml-0 ${sidebarCollapsed ? 'md:ml-[68px]' : 'md:ml-64'} h-screen overflow-y-auto p-4 md:p-8 transition-all`}>
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="text-2xl font-bold mb-2">Template Marketplace</h1>
           <p className="text-text/50 text-sm mb-6">Browse community templates to jumpstart your prompts.</p>

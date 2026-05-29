@@ -46,16 +46,10 @@ export default function Login() {
   const user     = useAuthStore((s) => s.user);
   const navigate = useNavigate();
 
-  // Already logged in — send to the right place
+  // Already logged in — send to dashboard
   useEffect(() => {
     if (!user) return;
-    if (user.role === 'admin') {
-      // Redirect admin users to the admin subdomain
-      const adminUrl = import.meta.env.VITE_ADMIN_URL || 'https://admin.nexprompt.site';
-      window.location.replace(`${adminUrl}/dashboard`);
-    } else {
-      navigate('/dashboard', { replace: true });
-    }
+    navigate('/dashboard', { replace: true });
   }, [user, navigate]);
 
   const handleSubmit = async (e) => {
@@ -63,13 +57,6 @@ export default function Login() {
     setError(''); setUnverifiedEmail(''); setLoading(true);
     try {
       const { data } = await api.post('/api/auth/login', { email, password });
-      if (data.user.role === 'admin') {
-        login(data.user, data.accessToken, data.refreshToken);
-        // Redirect admin users to the admin subdomain
-        const adminUrl = import.meta.env.VITE_ADMIN_URL || 'https://admin.nexprompt.site';
-        window.location.replace(`${adminUrl}/dashboard`);
-        return;
-      }
       login(data.user, data.accessToken, data.refreshToken);
       navigate('/dashboard');
     } catch (err) {

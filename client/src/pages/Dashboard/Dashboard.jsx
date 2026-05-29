@@ -111,6 +111,7 @@ export default function Dashboard() {
   const location = useLocation();
   const toggleSidebar = useUiStore((s) => s.toggleSidebar);
   const sidebarOpen = useUiStore((s) => s.sidebarOpen);
+  const sidebarCollapsed = useUiStore((s) => s.sidebarCollapsed);
   const { plan, tier, isPaid } = useTier();
   const getLimit = useSubscriptionStore((s) => s.getLimit);
 
@@ -197,7 +198,7 @@ export default function Dashboard() {
     return (
       <div className="h-screen overflow-hidden bg-bg">
         <Sidebar />
-        <div className={`${sidebarOpen ? 'ml-64' : 'ml-0'} h-screen overflow-y-auto p-4 md:p-8 transition-all`}>
+        <div className={`ml-0 ${sidebarCollapsed ? 'md:ml-[68px]' : 'md:ml-64'} h-screen overflow-y-auto p-4 sm:p-8 transition-all`}>
           <Loader text="Loading your dashboard..." />
         </div>
       </div>
@@ -212,7 +213,7 @@ export default function Dashboard() {
   return (
     <div className="h-screen overflow-hidden bg-bg bg-grid">
       <Sidebar />
-      <div className={`${sidebarOpen ? 'ml-64' : 'ml-0'} h-screen overflow-y-auto p-4 md:p-8 transition-all`}>
+      <div className={`ml-0 ${sidebarCollapsed ? 'md:ml-[68px]' : 'md:ml-64'} h-screen overflow-y-auto p-4 sm:p-8 transition-all`}>
         {showWelcome && (
           <motion.div
             initial={{ opacity: 0, y: -12 }}
@@ -239,12 +240,12 @@ export default function Dashboard() {
             </button>
           </motion.div>
         )}
-        <div className="flex items-center justify-between mb-8">
-          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold">Dashboard</h1>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 sm:mb-8 gap-4 sm:gap-0">
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="min-w-0">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-bold">Dashboard</h1>
               {isPaid && PlanIcon && (
-                <span className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border"
+                <span className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border shrink-0"
                   style={{ borderColor: tier.border, backgroundColor: tier.primary + '15', color: tier.primary }}>
                   <PlanIcon size={11} />
                   {plan.charAt(0).toUpperCase() + plan.slice(1)}
@@ -256,20 +257,20 @@ export default function Dashboard() {
               {hasPrompts && <span className="text-text/30"> &middot; {stats.prompts} prompt{stats.prompts !== 1 ? 's' : ''} created</span>}
             </p>
           </motion.div>
-          <div className="flex gap-3 items-center">
-            <button onClick={toggleSidebar} className="text-text/30 hover:text-text md:hidden transition-colors"><Menu size={20} /></button>
-            <Link to="/workspace"><Button><Plus size={16} /> New prompt</Button></Link>
-            <Button variant="ghost" onClick={async () => {
+          <div className="flex gap-2 items-center self-end sm:self-auto">
+            <button onClick={toggleSidebar} className="text-text/30 hover:text-text md:hidden transition-colors" aria-label="Toggle sidebar"><Menu size={20} /></button>
+            <Link to="/workspace"><Button className="!px-3 md:!px-5"><Plus size={16} /><span className="hidden md:inline">New prompt</span></Button></Link>
+            <Button variant="ghost" className="!px-3 md:!px-5" onClick={async () => {
               await api.post('/api/auth/logout', { refreshToken: useAuthStore.getState().refreshToken }).catch(() => {});
               logout();
               navigate('/login');
             }}>
-              <LogOut size={16} /> Logout
+              <LogOut size={16} /><span className="hidden md:inline">Logout</span>
             </Button>
           </div>
         </div>
 
-        <motion.div variants={stagger} initial="hidden" animate="show" className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <motion.div variants={stagger} initial="hidden" animate="show" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
           <StatCard label="Total prompts" value={stats.prompts} icon={FileText} color="text-primary" subtitle={hasPrompts ? 'Across all conversations' : 'Get started'} />
           <Link to="/favorites">
             <StatCard label="Favorites" value={stats.favorites} icon={Star} color="text-yellow-400" subtitle={stats.favorites > 0 ? 'Saved prompts' : 'Star prompts to save'} />
@@ -305,10 +306,10 @@ export default function Dashboard() {
           </motion.div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-6 mb-8">
           <motion.div variants={fadeUp} initial="hidden" animate="show" className="lg:col-span-2">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-medium">Recent prompts</h2>
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <h2 className="text-base sm:text-lg font-medium">Recent prompts</h2>
               {hasPrompts && (
                 <Link to="/workspace" className="text-xs text-primary hover:text-accent transition-colors flex items-center gap-1">
                   View all <ArrowRight size={12} />
@@ -350,7 +351,7 @@ export default function Dashboard() {
           </motion.div>
 
           <motion.div variants={fadeUp} initial="hidden" animate="show">
-            <h2 className="text-lg font-medium mb-4">Quick actions</h2>
+            <h2 className="text-base sm:text-lg font-medium mb-3 sm:mb-4">Quick actions</h2>
             <div className="space-y-3">
               <QuickAction to="/workspace" icon={Plus} label="New prompt" description="Create and optimize" color="text-primary" />
               <QuickAction to="/templates" icon={FileText} label="Browse templates" description="Jumpstart your workflow" color="text-accent" />
